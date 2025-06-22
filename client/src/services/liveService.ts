@@ -335,17 +335,24 @@ export const deleteStory = async (storyId: string): Promise<void> => {
   try {
     console.log(`🗑️ Deleting story: ${storyId}`);
     
-    // Get story data first to get the fileName for storage deletion
-    const storyDoc = await getDocs(query(collection(db, 'stories'), where('__name__', '==', storyId)));
+    // Get current user to determine the correct collection path
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Nicht angemeldet. Lade die Seite neu und versuche es erneut.');
+    }
     
-    if (!storyDoc.empty) {
-      const storyData = storyDoc.docs[0].data();
+    // Get story data first from user-specific collection
+    const storyRef = doc(db, `users/${currentUser.uid}/stories`, storyId);
+    const storyDoc = await getDoc(storyRef);
+    
+    if (storyDoc.exists()) {
+      const storyData = storyDoc.data();
       
       // Delete from storage if fileName exists
       if (storyData.fileName) {
         try {
-          // 🔧 FIX: Use 'uploads/' path for deletion too
-          const storageRef = ref(storage, `uploads/${storyData.fileName}`);
+          // Use user-specific storage path
+          const storageRef = ref(storage, `users/${currentUser.uid}/stories/${storyData.fileName}`);
           await deleteObject(storageRef);
           console.log(`✅ Deleted story from storage: ${storyData.fileName}`);
         } catch (storageError) {
@@ -353,11 +360,14 @@ export const deleteStory = async (storyId: string): Promise<void> => {
           // Continue with Firestore deletion even if storage deletion fails
         }
       }
+      
+      // Delete from Firestore
+      await deleteDoc(storyRef);
+      console.log(`✅ Deleted story from Firestore: ${storyId}`);
+    } else {
+      console.warn(`⚠️ Story ${storyId} not found in user collection`);
+      throw new Error('Story nicht gefunden oder bereits gelöscht.');
     }
-    
-    // Delete from Firestore
-    await deleteDoc(doc(db, 'stories', storyId));
-    console.log(`✅ Deleted story from Firestore: ${storyId}`);
     
   } catch (error) {
     console.error('Error deleting story:', error);

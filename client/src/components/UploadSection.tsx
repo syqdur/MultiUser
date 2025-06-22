@@ -10,6 +10,7 @@ interface UploadSectionProps {
   isUploading: boolean;
   progress: number;
   isDarkMode: boolean;
+  themeConfig?: any;
 }
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
@@ -19,7 +20,8 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   onAddStory,
   isUploading,
   progress,
-  isDarkMode
+  isDarkMode,
+  themeConfig
 }) => {
   const [files, setFiles] = useState<FileList | null>(null);
   const [showUploadOptions, setShowUploadOptions] = useState(false);

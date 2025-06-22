@@ -17,6 +17,7 @@ interface InstagramGalleryProps {
   onToggleLike: (mediaId: string) => void;
   userName: string;
   isDarkMode: boolean;
+  themeConfig?: any;
 }
 
 export const InstagramGallery: React.FC<InstagramGalleryProps> = ({
@@ -31,7 +32,8 @@ export const InstagramGallery: React.FC<InstagramGalleryProps> = ({
   onDeleteComment,
   onToggleLike,
   userName,
-  isDarkMode
+  isDarkMode,
+  themeConfig
 }) => {
   const [viewMode, setViewMode] = useState<'feed' | 'grid'>('feed');
   const [notesSliderIndex, setNotesSliderIndex] = useState(0);
@@ -170,7 +172,7 @@ export const InstagramGallery: React.FC<InstagramGalleryProps> = ({
                 onToggleLike={onToggleLike}
                 onDelete={onDelete}
                 onEditNote={onEditNote}
-                showDeleteButton={isAdmin}
+                showDeleteButton={isAdmin || item.uploadedBy === userName}
                 userName={userName}
                 isAdmin={isAdmin}
                 isDarkMode={isDarkMode}
@@ -186,7 +188,7 @@ export const InstagramGallery: React.FC<InstagramGalleryProps> = ({
                 onToggleLike={onToggleLike}
                 onDelete={onDelete}
                 onEditNote={onEditNote}
-                showDeleteButton={isAdmin}
+                showDeleteButton={isAdmin || item.uploadedBy === userName}
                 userName={userName}
                 isAdmin={isAdmin}
                 onClick={() => onItemClick(index)}

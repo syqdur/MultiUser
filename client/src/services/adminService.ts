@@ -27,16 +27,27 @@ export const setupAdminPassword = async (
     // Create gallery with admin password
     await createUserGallery(userId, displayName, hashedPassword);
     
-    // Update user document to remove setup flag
-    await updateDoc(doc(db, 'users', userId), {
-      needsAdminPasswordSetup: false,
-      adminPasswordSet: true
-    });
+    // Try to update user document, but don't fail if permissions are missing
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        needsAdminPasswordSetup: false,
+        adminPasswordSet: true
+      });
+    } catch (updateError) {
+      console.warn('Could not update user document (permission issue):', updateError);
+      // Continue anyway as the gallery was created successfully
+    }
     
     console.log(`✅ Admin password setup completed for user ${userId}`);
   } catch (error) {
     console.error('Error setting up admin password:', error);
-    throw new Error('Fehler beim Einrichten des Admin-Passworts');
+    
+    // Check if it's a permission error
+    if (error.code === 'permission-denied') {
+      throw new Error('Firebase permissions need to be configured. Please see the Firebase setup guide.');
+    } else {
+      throw new Error('Error setting up admin password: ' + error.message);
+    }
   }
 };
 
@@ -50,6 +61,21 @@ export const checkAdminPasswordSetup = async (userId: string): Promise<boolean> 
     return false;
   } catch (error) {
     console.error('Error checking admin password setup:', error);
+    // If we can't check due to permissions, assume setup is needed
+    return false;
+  }
+};
+
+export const hasAdminPassword = async (userId: string): Promise<boolean> => {
+  try {
+    const galleryDoc = await getDoc(doc(db, 'galleries', userId));
+    if (galleryDoc.exists()) {
+      const galleryData = galleryDoc.data();
+      return !!galleryData.settings?.adminPassword;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking admin password:', error);
     return false;
   }
 };

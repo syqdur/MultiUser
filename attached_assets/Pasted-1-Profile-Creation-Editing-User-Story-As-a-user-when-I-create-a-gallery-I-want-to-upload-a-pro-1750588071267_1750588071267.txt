@@ -1,0 +1,71 @@
+1. Profile Creation & Editing
+User Story:
+As a user, when I create a gallery, I want to upload a profile picture, define my profile name, and write a short bio, so my gallery has a personal touch.
+
+Acceptance Criteria:
+
+On first gallery creation, show a profile setup modal:
+
+Upload profile picture (JPEG, PNG – preview required).
+
+Input for profile name (required).
+
+Textarea for short bio (max 300 chars).
+
+These settings are saved to the user profile.
+
+Profile settings can be edited later in the Admin Panel > Edit Profile section.
+
+Inputs are validated and persisted (including image storage).
+
+2. Theming System (Templates)
+User Story:
+As a user, I want to choose from predefined gallery themes (Wedding, Vacation, Birthday) with specific text and color stylings, so the gallery fits the event.
+
+Acceptance Criteria:
+
+Allow the user to select a theme at gallery creation and change it later in Admin Panel.
+
+Implement the following templates:
+
+Theme	Color Theme	Text Content Variant
+Wedding	Romantic tones (e.g., soft pinks, ivory)	Already implemented
+Vacation	Soft green, pastel tones	Relaxed, joyful vacation messaging
+Birthday	Light blue with festive highlights	Cheerful birthday text prompts
+
+The selected theme should:
+
+Change the gallery’s CSS color variables.
+
+Change headline texts and section prompts to match theme tone.
+
+Theme must be saved and persist on reload.
+
+3. Editable Notes System
+User Story:
+As a user, I want to edit notes in the gallery so I can personalize messages for each memory or moment.
+
+Acceptance Criteria:
+
+Notes can be edited inline (click to edit or pencil icon).
+
+Current implementation does not persist changes (no backend connection yet).
+
+Future TODO: Add save-to-database logic.
+
+Notes field should still be responsive and user-friendly.
+
+4. Profile Name Synchronization in Gallery Posts
+User Story:
+As a user, when I change my profile name, I want all my gallery posts to reflect the new name automatically.
+
+Acceptance Criteria:
+
+When profile name is updated and saved in Admin Panel:
+
+All instances in the gallery where the profile name appears (e.g., post attribution, comments, etc.) are updated immediately.
+
+Profile name is referenced dynamically, not statically stored in posts.
+
+Ensure update happens reactively (e.g., through a state management system or DB query).
+

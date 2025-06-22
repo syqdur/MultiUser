@@ -1,8 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User documents
+    // User documents - allow authenticated users to create and manage their own documents
     match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Galleries collection - needed for admin password setup
+    match /galleries/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
     }
@@ -24,6 +30,11 @@ service cloud.firestore {
     
     match /users/{userId}/recaps/{recapId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /users/{userId}/timeline/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
     }
     
     // Spotify tokens - user specific
@@ -75,16 +86,10 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
-    // User profiles
+    // User profiles - allow authenticated users to create and manage their profiles
     match /user_profiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
-    }
-    
-    // User-specific timeline events
-    match /users/{userId}/timeline/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

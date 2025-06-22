@@ -20,8 +20,10 @@ import { PublicGalleryRoute } from './PublicGalleryRoute';
 import { AdminLoginModal } from './AdminLoginModal';
 import { AdminPasswordSetup } from './AdminPasswordSetup';
 import { FirebasePermissionsBanner } from './FirebasePermissionsBanner';
+import { ProfileSetupModal } from './ProfileSetupModal';
 import { useAuth } from '../hooks/useAuth';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useTheme } from '../hooks/useTheme';
 import { MediaItem, Comment, Like } from '../types';
 import {
   uploadUserFiles,
@@ -37,7 +39,7 @@ import {
   editUserNote
 } from '../services/userFirebaseService';
 import { UserMediaItem } from '../services/userGalleryService';
-import { setupAdminPassword, checkAdminPasswordSetup } from '../services/adminService';
+import { setupAdminPassword, checkAdminPasswordSetup, hasAdminPassword } from '../services/adminService';
 import { subscribeSiteStatus, SiteStatus } from '../services/siteStatusService';
 import {
   subscribeStories,
@@ -48,6 +50,13 @@ import {
   cleanupExpiredStories,
   Story
 } from '../services/liveService';
+import { 
+  createUserProfile, 
+  getUserProfile, 
+  updateUserProfile, 
+  checkProfileSetupRequired,
+  UserProfile as ProfileType
+} from '../services/profileService';
 
 interface GalleryAppProps {
   isDarkMode: boolean;
@@ -56,6 +65,9 @@ interface GalleryAppProps {
 
 export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMode }) => {
   const { user, logout } = useAuth();
+  const [userProfile, setUserProfile] = useState<ProfileType | null>(null);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const { currentTheme, changeTheme, getThemeConfig, getThemeClasses } = useTheme();
   const [mediaItems, setMediaItems] = useState<UserMediaItem[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [likes, setLikes] = useState<Like[]>([]);
@@ -97,6 +109,30 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     return window.location.pathname === '/admin/post-wedding-recap';
   };
 
+  // Load user profile and check setup requirements
+  useEffect(() => {
+    if (!user) return;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await getUserProfile(user.uid);
+        if (profile) {
+          setUserProfile(profile);
+          changeTheme(profile.theme);
+        } else {
+          // For new users or when profile doesn't exist, show setup modal
+          setShowProfileSetup(true);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        // If Firebase has permission issues, still show profile setup for new users
+        setShowProfileSetup(true);
+      }
+    };
+
+    loadProfile();
+  }, [user, changeTheme]);
+
   // Subscribe to site status changes
   useEffect(() => {
     const unsubscribe = subscribeSiteStatus((status) => {
@@ -133,13 +169,22 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   useEffect(() => {
     if (!user) return;
 
-    // Check if admin password setup is needed
-    checkAdminPasswordSetup(user.uid).then(isSetup => {
+    // Check admin status and password setup
+    const checkAdminStatus = async () => {
+      const isSetup = await checkAdminPasswordSetup(user.uid);
+      const hasPassword = await hasAdminPassword(user.uid);
+      
       if (!isSetup) {
         setNeedsAdminPasswordSetup(true);
         setShowAdminPasswordSetup(true);
+      } else if (hasPassword) {
+        // User has admin password set up, automatically make them admin
+        setIsAdmin(true);
+        localStorage.setItem('admin_status', 'true');
       }
-    });
+    };
+    
+    checkAdminStatus();
 
     if (!siteStatus || siteStatus.isUnderConstruction) return;
 
@@ -311,6 +356,44 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     await markStoryAsViewed(storyId, user.uid);
   };
 
+  const handleProfileSetupComplete = async (profile: any) => {
+    if (!user) return;
+
+    try {
+      const createdProfile = await createUserProfile(user.uid, profile);
+      setUserProfile(createdProfile);
+      changeTheme(profile.theme);
+      setShowProfileSetup(false);
+      setStatus('✅ Profile created successfully!');
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      // Even if Firebase save fails, set local profile and continue
+      const localProfile = {
+        displayName: profile.displayName,
+        bio: profile.bio,
+        profilePictureUrl: profile.profilePictureUrl,
+        theme: profile.theme,
+        website: `${profile.displayName.toLowerCase().replace(' ', '')}.gallery`,
+        followerCount: '∞',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      setUserProfile(localProfile);
+      changeTheme(profile.theme);
+      setShowProfileSetup(false);
+      setStatus('✅ Profile created locally. Will sync when Firebase permissions are fixed.');
+      setTimeout(() => setStatus(''), 5000);
+    }
+  };
+
+  const handleProfileUpdate = (updatedProfile: any) => {
+    setUserProfile(updatedProfile);
+    if (updatedProfile.theme) {
+      changeTheme(updatedProfile.theme);
+    }
+  };
+
   const handleDeleteStory = async (storyId: string) => {
     try {
       await deleteStory(storyId);
@@ -366,6 +449,11 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       await setupAdminPassword(user.uid, password, displayName);
       setNeedsAdminPasswordSetup(false);
       setShowAdminPasswordSetup(false);
+      // Automatically make user admin after setting up password
+      setIsAdmin(true);
+      localStorage.setItem('admin_status', 'true');
+      setStatus('✅ Admin-Passwort erfolgreich eingerichtet! Sie sind jetzt Administrator.');
+      setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       console.error('Error setting up admin password:', error);
       throw error;
@@ -463,10 +551,14 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     );
   }
 
+  // Get theme configuration safely
+  const themeConfig = getThemeConfig();
+  const themeClasses = getThemeClasses();
+
   // Main gallery interface
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
-      isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+      isDarkMode ? 'bg-gray-900' : (themeClasses?.accentBg || 'bg-gray-50')
     }`}>
       {/* Header */}
       <div className={`sticky top-0 z-40 backdrop-blur-lg bg-opacity-90 border-b transition-colors duration-300 ${
@@ -477,7 +569,12 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <ProfileHeader isDarkMode={isDarkMode} isAdmin={isAdmin} />
+              <ProfileHeader 
+                isDarkMode={isDarkMode} 
+                isAdmin={isAdmin} 
+                userProfile={userProfile}
+                onProfileUpdate={handleProfileUpdate}
+              />
               <LiveUserIndicator 
                 currentUser={user?.displayName || user?.email || 'Anonymous'} 
                 isDarkMode={isDarkMode} 
@@ -562,6 +659,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
               isUploading={isUploading}
               progress={uploadProgress}
               isDarkMode={isDarkMode}
+              themeConfig={themeConfig}
             />
 
             {/* Gallery */}
@@ -573,11 +671,12 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
               isAdmin={isAdmin}
               comments={comments}
               likes={likes}
-              onAddComment={(mediaId, text) => addUserComment(mediaId, text, user?.displayName || user?.email || 'Anonymous', user?.uid || '', user?.uid || '')}
+              onAddComment={(mediaId, text) => addUserComment(mediaId, text, userProfile?.displayName || user?.displayName || user?.email || 'Anonymous', user?.uid || '', user?.uid || '')}
               onDeleteComment={(commentId) => deleteUserComment(commentId, user?.uid || '')}
-              onToggleLike={(mediaId) => toggleUserLike(mediaId, user?.uid || '', user?.displayName || user?.email || 'Anonymous', user?.uid || '')}
-              userName={user?.displayName || user?.email || 'Anonymous'}
+              onToggleLike={(mediaId) => toggleUserLike(mediaId, user?.uid || '', userProfile?.displayName || user?.displayName || user?.email || 'Anonymous', user?.uid || '')}
+              userName={userProfile?.displayName || user?.displayName || user?.email || 'Anonymous'}
               isDarkMode={isDarkMode}
+              themeConfig={themeConfig}
             />
           </>
         )}
@@ -598,32 +697,24 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         )}
       </div>
 
-      {/* Admin Access Button - Always visible */}
-      <div className="fixed bottom-4 left-4 z-50">
-        <button
-          onClick={() => isAdmin ? handleAdminLogout() : setShowAdminLogin(true)}
-          className={`p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
-            isDarkMode
-              ? isAdmin
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-              : isAdmin
-                ? 'bg-green-500 hover:bg-green-600 text-white'
-                : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
-          }`}
-          title={isAdmin ? "Admin-Modus verlassen" : "Admin-Modus"}
-        >
-          {isAdmin ? (
+      {/* Admin Logout Button - Only visible when admin */}
+      {isAdmin && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <button
+            onClick={handleAdminLogout}
+            className={`p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
+              isDarkMode
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-red-500 hover:bg-red-600 text-white'
+            }`}
+            title="Admin-Modus verlassen"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM4 10V7a8 8 0 1116 0v3" />
-            </svg>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {/* Admin Panel (if admin) */}
       {isAdmin && (
@@ -686,6 +777,15 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         onSave={handleAdminPasswordSave}
         isDarkMode={isDarkMode}
         userDisplayName={user?.displayName || user?.email || 'Anonymous'}
+      />
+
+      {/* Profile Setup Modal */}
+      <ProfileSetupModal
+        isOpen={showProfileSetup}
+        onClose={() => setShowProfileSetup(false)}
+        onComplete={handleProfileSetupComplete}
+        userId={user?.uid || ''}
+        isDarkMode={isDarkMode}
       />
     </div>
   );

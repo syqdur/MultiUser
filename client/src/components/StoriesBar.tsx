@@ -86,12 +86,17 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({
   const handleStoryClick = (userName: string) => {
     console.log(`🎯 Story clicked for user: ${userName}`);
     
-    // Find the first story index for this user in the original stories array
-    const firstStoryIndex = stories.findIndex(story => story.userName === userName);
-    console.log(`📍 First story index for ${userName}: ${firstStoryIndex}`);
+    // Find the NEWEST story index for this user in the original stories array
+    // This will start viewing from the most recent story
+    const userStoriesIndices = stories
+      .map((story, index) => ({ story, index }))
+      .filter(({ story }) => story.userName === userName)
+      .sort((a, b) => new Date(b.story.createdAt).getTime() - new Date(a.story.createdAt).getTime());
     
-    if (firstStoryIndex !== -1) {
-      onViewStory(firstStoryIndex);
+    if (userStoriesIndices.length > 0) {
+      const newestStoryIndex = userStoriesIndices[0].index;
+      console.log(`📍 Newest story index for ${userName}: ${newestStoryIndex}`);
+      onViewStory(newestStoryIndex);
     } else {
       console.error(`❌ Could not find story for user: ${userName}`);
     }

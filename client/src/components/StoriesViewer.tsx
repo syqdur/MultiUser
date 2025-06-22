@@ -36,7 +36,8 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
   const STORY_DURATION = 5000; // 5 seconds per story
 
   // Check if current user can delete this story
-  const canDeleteStory = isAdmin || (currentStory && currentStory.userName === currentUser);
+  // For stories, we need to compare deviceId (which is the user ID) with currentUser (which is also user ID)
+  const canDeleteStory = isAdmin || (currentStory && currentStory.deviceId === currentUser);
 
   useEffect(() => {
     if (!isOpen || !currentStory) return;

@@ -9,6 +9,8 @@ import { safeFirebaseOperation } from '../services/errorHandler';
 interface ProfileHeaderProps {
   isDarkMode: boolean;
   isAdmin: boolean;
+  userProfile?: UserProfile | null;
+  onProfileUpdate?: (profile: UserProfile) => void;
 }
 
 interface UserProfile {
@@ -17,9 +19,15 @@ interface UserProfile {
   profilePictureUrl: string;
   followerCount: string;
   website: string;
+  theme?: string;
 }
 
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ isDarkMode, isAdmin }) => {
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ 
+  isDarkMode, 
+  isAdmin, 
+  userProfile, 
+  onProfileUpdate 
+}) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
     displayName: '',
@@ -32,12 +40,20 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ isDarkMode, isAdmi
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Load user profile on component mount
+  // Use passed userProfile or load from Firebase
   useEffect(() => {
-    if (user) {
+    if (userProfile) {
+      setProfile({
+        displayName: userProfile.displayName,
+        bio: userProfile.bio,
+        profilePictureUrl: userProfile.profilePictureUrl,
+        followerCount: userProfile.followerCount || '∞',
+        website: userProfile.website || ''
+      });
+    } else if (user) {
       loadUserProfile();
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -105,10 +121,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ isDarkMode, isAdmi
     if (success) {
       setProfile(editedProfile);
       setIsEditing(false);
+      // Notify parent component about the profile update
+      if (onProfileUpdate) {
+        onProfileUpdate(editedProfile);
+      }
     } else {
       // Even if save fails, update local state for now
       setProfile(editedProfile);
       setIsEditing(false);
+      // Notify parent component about the profile update
+      if (onProfileUpdate) {
+        onProfileUpdate(editedProfile);
+      }
       alert('Profile updated locally. Changes will sync once Firebase rules are deployed.');
     }
   };
