@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, Settings, Download, Globe, Users, ExternalLink, Image, Video, MessageSquare, Gift, Heart, Star, Eye, Code, Music, Sparkles } from 'lucide-react';
+import { Lock, Unlock, Settings, Download, Globe, Users, ExternalLink, Image, Video, MessageSquare, Gift, Heart, Star, Eye, Code, Music, Sparkles, X } from 'lucide-react';
 import { MediaItem } from '../types';
 import { downloadAllMedia } from '../services/downloadService';
 import { SiteStatus, updateSiteStatus } from '../services/siteStatusService';
 import { ShowcaseModal } from './ShowcaseModal';
 import { UserManagementModal } from './UserManagementModal';
 import { SpotifyAdmin } from './SpotifyAdmin';
+import { PublicSharingPanel } from './PublicSharingPanel';
 
 interface AdminPanelProps {
   isDarkMode: boolean;
@@ -181,26 +182,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <>
-      {/* Main Admin Toggle Button */}
-      <button
-        onClick={handleAdminToggle}
-        className={`fixed bottom-4 left-4 p-2 rounded-full shadow-lg transition-colors duration-300 ${
-          isDarkMode
-            ? isAdmin
-              ? 'bg-green-600 hover:bg-green-700 text-white'
-              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-            : isAdmin
-              ? 'bg-green-500 hover:bg-green-600 text-white'
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
-        }`}
-        title={isAdmin ? "Admin-Modus verlassen" : "Admin-Modus"}
-      >
-        {isAdmin ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-      </button>
-
-      {/* Admin Controls - Alle Buttons in einer horizontalen Reihe */}
       {isAdmin && (
-        <div className="fixed bottom-16 left-4 flex gap-2">
+        <>
+          {/* Admin Controls - Alle Buttons in einer horizontalen Reihe */}
+          <div className="fixed bottom-16 left-4 flex gap-2">
           {/* POST-WEDDING RECAP BUTTON - NEW */}
           <button
             onClick={handleOpenPostWeddingRecap}
@@ -311,7 +296,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`} />
           </button>
-        </div>
+          </div>
+        </>
       )}
 
       {/* USER MANAGEMENT MODAL */}
@@ -496,6 +482,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
+            {/* Public Sharing Panel */}
+            <PublicSharingPanel isDarkMode={isDarkMode} />
+
             {/* Services Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {externalServices.map((service, index) => (
@@ -644,19 +633,3 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   );
 };
 
-// X icon component
-const X: React.FC<{ className?: string }> = ({ className }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);

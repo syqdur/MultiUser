@@ -44,6 +44,9 @@ import {
 
 import { MediaItem } from '../types';
 import { loadGallery } from '../services/firebaseService';
+import { VideoGeneratorModal, VideoConfig } from './VideoGeneratorModal';
+import { generateRecapVideo } from '../services/videoGenerationService';
+import { useAuth } from '../hooks/useAuth';
 
 interface PostWeddingRecapProps {
   isDarkMode: boolean
@@ -213,6 +216,7 @@ const deleteCardFromFirebase = async (cardId: string) => {
 export const PostWeddingRecap: React.FC<PostWeddingRecapProps> = ({ isDarkMode, mediaItems, isAdmin, userName }) => {
   console.log("🚀 PostWeddingRecap wird geladen...", { isDarkMode, mediaItems, isAdmin, userName })
 
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<"moments" | "cards" | "share" | "analytics">("moments")
   const [moments, setMoments] = useState<Moment[]>([])
   const [thankYouCards, setThankYouCards] = useState<ThankYouCard[]>([])
@@ -232,6 +236,7 @@ export const PostWeddingRecap: React.FC<PostWeddingRecapProps> = ({ isDarkMode, 
   const [showCreateMoment, setShowCreateMoment] = useState(false)
   const [showCreateCard, setShowCreateCard] = useState(false)
   const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null)
+  const [showVideoGenerator, setShowVideoGenerator] = useState(false)
 
   // State für Moment-Formular
   const [newMoment, setNewMoment] = useState({
@@ -884,20 +889,42 @@ export const PostWeddingRecap: React.FC<PostWeddingRecapProps> = ({ isDarkMode, 
                   Wähle und organisiere die schönsten Erinnerungen von eurer Hochzeit ({moments.length} Momente)
                 </p>
               </div>
-              <button
-                onClick={handleCreateMoment}
-                disabled={isSaving}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors duration-300 ${
-                  isSaving
-                    ? "bg-gray-400 cursor-not-allowed text-white"
-                    : isDarkMode
-                      ? "bg-pink-600 hover:bg-pink-700 text-white"
-                      : "bg-pink-500 hover:bg-pink-600 text-white"
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowVideoGenerator(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors duration-300 ${
+                    isDarkMode
+                      ? "bg-purple-600 hover:bg-purple-700 text-white"
+                      : "bg-purple-500 hover:bg-purple-600 text-white"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Video erstellen
+                </button>
+                <button
+                  onClick={handleCreateMoment}
+                  disabled={isSaving}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors duration-300 ${
+                    isSaving
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : isDarkMode
+                        ? "bg-pink-600 hover:bg-pink-700 text-white"
+                        : "bg-pink-500 hover:bg-pink-600 text-white"
                 }`}
               >
-                <Plus className="w-4 h-4" />
-                {isSaving ? "Speichere..." : "Moment hinzufügen"}
-              </button>
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Speichern...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Moment hinzufügen
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Moments Grid */}
@@ -2134,6 +2161,28 @@ export const PostWeddingRecap: React.FC<PostWeddingRecapProps> = ({ isDarkMode, 
           </div>
         </div>
       )}
+
+      {/* Video Generator Modal */}
+      <VideoGeneratorModal
+        isOpen={showVideoGenerator}
+        onClose={() => setShowVideoGenerator(false)}
+        mediaItems={localMediaItems.map(item => ({
+          id: item.id,
+          galleryId: item.galleryId || item.deviceId,
+          name: item.name,
+          url: item.url,
+          type: item.type as 'image' | 'video' | 'note',
+          uploadedBy: item.uploadedBy,
+          uploadedAt: item.uploadedAt,
+          caption: item.caption,
+          noteText: item.noteText,
+          isPrivate: item.isPrivate || false,
+          tags: item.tags || [],
+          deviceId: item.deviceId
+        }))}
+        isDarkMode={isDarkMode}
+        onGenerateVideo={handleGenerateVideo}
+      />
     </div>
   )
 }

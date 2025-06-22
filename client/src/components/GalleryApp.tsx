@@ -16,6 +16,7 @@ import { MusicWishlist } from './MusicWishlist';
 import { Timeline } from './Timeline';
 import { PostWeddingRecap } from './PostWeddingRecap';
 import { PublicRecapPage } from './PublicRecapPage';
+import { PublicGalleryRoute } from './PublicGalleryRoute';
 import { AdminLoginModal } from './AdminLoginModal';
 import { AdminPasswordSetup } from './AdminPasswordSetup';
 import { useAuth } from '../hooks/useAuth';
@@ -77,6 +78,11 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   const isSpotifyCallback = () => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.has('code') && urlParams.has('state');
+  };
+
+  // Check if we're on a public gallery route
+  const isPublicGalleryRoute = () => {
+    return window.location.pathname.startsWith('/p/');
   };
 
   // Check if we're on the Public Recap page
@@ -348,6 +354,11 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     }
   };
 
+  // Show Public Gallery Route if accessing a public gallery
+  if (isPublicGalleryRoute()) {
+    return <PublicGalleryRoute isDarkMode={isDarkMode} />;
+  }
+
   // Show Spotify callback handler if on callback page
   if (isSpotifyCallback()) {
     return <SpotifyCallback isDarkMode={isDarkMode} />;
@@ -439,7 +450,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <ProfileHeader isDarkMode={isDarkMode} />
+              <ProfileHeader isDarkMode={isDarkMode} isAdmin={isAdmin} />
               <LiveUserIndicator 
                 currentUser={user?.displayName || user?.email || 'Anonymous'} 
                 isDarkMode={isDarkMode} 
@@ -549,6 +560,33 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
             isAdmin={isAdmin}
           />
         )}
+      </div>
+
+      {/* Admin Access Button - Always visible */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <button
+          onClick={() => isAdmin ? handleAdminLogout() : setShowAdminLogin(true)}
+          className={`p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
+            isDarkMode
+              ? isAdmin
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+              : isAdmin
+                ? 'bg-green-500 hover:bg-green-600 text-white'
+                : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+          }`}
+          title={isAdmin ? "Admin-Modus verlassen" : "Admin-Modus"}
+        >
+          {isAdmin ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM4 10V7a8 8 0 1116 0v3" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {/* Admin Panel (if admin) */}
