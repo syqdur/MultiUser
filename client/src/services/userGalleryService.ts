@@ -28,6 +28,7 @@ export interface UserGallery {
     allowStories: boolean;
     passwordProtected: boolean;
     password?: string;
+    adminPassword?: string;
   };
 }
 
@@ -52,12 +53,12 @@ export interface UserMediaItem {
 export const createUserGallery = async (
   userId: string,
   userName: string,
-  title?: string
+  adminPassword?: string
 ): Promise<void> => {
   const defaultGallery: UserGallery = {
     id: userId,
-    title: title || `${userName}'s Wedding Gallery`,
-    description: 'Our beautiful wedding memories',
+    title: `${userName}'s Hochzeitsgalerie`,
+    description: 'Willkommen in unserer wunderschönen Hochzeitsgalerie!',
     theme: 'elegant',
     public: false,
     createdAt: new Date().toISOString(),
@@ -67,7 +68,8 @@ export const createUserGallery = async (
       allowComments: true,
       allowLikes: true,
       allowStories: true,
-      passwordProtected: false
+      passwordProtected: false,
+      adminPassword: adminPassword
     }
   };
 

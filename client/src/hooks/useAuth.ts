@@ -47,11 +47,11 @@ export function useAuth(): UseAuthReturn {
       email: newUser.email,
       displayName,
       createdAt: new Date(),
-      uid: newUser.uid
+      uid: newUser.uid,
+      needsAdminPasswordSetup: true // Flag to show admin password setup
     });
 
-    // Create default gallery document using the user gallery service
-    await createUserGallery(newUser.uid, displayName);
+    // Gallery will be created after admin password setup
   };
 
   const signIn = async (email: string, password: string) => {

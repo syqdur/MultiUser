@@ -17,6 +17,7 @@ import { Timeline } from './Timeline';
 import { PostWeddingRecap } from './PostWeddingRecap';
 import { PublicRecapPage } from './PublicRecapPage';
 import { AdminLoginModal } from './AdminLoginModal';
+import { AdminPasswordSetup } from './AdminPasswordSetup';
 import { useAuth } from '../hooks/useAuth';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { MediaItem, Comment, Like } from '../types';
@@ -34,6 +35,7 @@ import {
   editUserNote
 } from '../services/userFirebaseService';
 import { UserMediaItem } from '../services/userGalleryService';
+import { setupAdminPassword, checkAdminPasswordSetup } from '../services/adminService';
 import { subscribeSiteStatus, SiteStatus } from '../services/siteStatusService';
 import {
   subscribeStories,
@@ -68,6 +70,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   const [showStoryUpload, setShowStoryUpload] = useState(false);
   const [activeTab, setActiveTab] = useState<'gallery' | 'music' | 'timeline'>('gallery');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAdminPasswordSetup, setShowAdminPasswordSetup] = useState(false);
+  const [needsAdminPasswordSetup, setNeedsAdminPasswordSetup] = useState(false);
 
   // Check if we're on the Spotify callback page
   const isSpotifyCallback = () => {
@@ -115,7 +119,17 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   }, [user, siteStatus, isAdmin]);
 
   useEffect(() => {
-    if (!user || !siteStatus || siteStatus.isUnderConstruction) return;
+    if (!user) return;
+
+    // Check if admin password setup is needed
+    checkAdminPasswordSetup(user.uid).then(isSetup => {
+      if (!isSetup) {
+        setNeedsAdminPasswordSetup(true);
+        setShowAdminPasswordSetup(true);
+      }
+    });
+
+    if (!siteStatus || siteStatus.isUnderConstruction) return;
 
     const unsubscribeGallery = loadUserGallery(user.uid, setMediaItems);
     const unsubscribeComments = loadUserComments(user.uid, setComments);
