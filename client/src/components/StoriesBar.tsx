@@ -4,7 +4,7 @@ import { Story } from '../services/liveService';
 
 interface StoriesBarProps {
   stories: Story[];
-  currentUser: string; // User ID for view tracking
+  currentUser: string; // User ID for ownership check
   currentUserName?: string; // Display name for UI
   onAddStory: () => void;
   onViewStory: (storyIndex: number) => void;

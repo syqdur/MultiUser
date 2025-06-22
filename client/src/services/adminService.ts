@@ -46,13 +46,32 @@ export const setupAdminPassword = async (
     console.log(`✅ Admin password setup completed for user ${userId} with gallery name: ${galleryName}`);
   } catch (error) {
     console.error('Error setting up admin password:', error);
+    throw error;
+  }
+};
+
+export const checkAdminPassword = async (
+  userId: string,
+  inputPassword: string
+): Promise<boolean> => {
+  try {
+    const galleryDoc = await getDoc(doc(db, 'galleries', userId));
     
-    // Check if it's a permission error
-    if (error.code === 'permission-denied') {
-      throw new Error('Firebase permissions need to be configured. Please see the Firebase setup guide.');
-    } else {
-      throw new Error('Error setting up admin password: ' + error.message);
+    if (!galleryDoc.exists()) {
+      return false;
     }
+    
+    const galleryData = galleryDoc.data();
+    const storedHash = galleryData.settings?.adminPassword;
+    
+    if (!storedHash) {
+      return false;
+    }
+    
+    return verifyAdminPassword(inputPassword, storedHash);
+  } catch (error) {
+    console.error('Error checking admin password:', error);
+    return false;
   }
 };
 

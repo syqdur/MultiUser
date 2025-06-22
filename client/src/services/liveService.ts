@@ -21,7 +21,8 @@ export interface Story {
   mediaType: 'image' | 'video';
   userName: string;
   deviceId: string;
-  visitorId: string; // Added for visitor tracking and deletion rights
+  visitorId: string; // For visitor tracking and deletion rights
+  userId?: string; // User ID for ownership
   createdAt: string;
   expiresAt: string;
   views: string[]; // Array of visitor IDs who viewed this story
@@ -77,7 +78,7 @@ export const addStory = async (
     const cleanUserName = userName.replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '_');
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || (mediaType === 'video' ? 'mp4' : 'jpg');
     
-    // 🔧 FIX: Use same path as regular uploads to avoid permission issues
+    // Use user-specific path to avoid permission issues
     const fileName = `STORY_${timestamp}_${cleanUserName}.${fileExtension}`;
     
     console.log(`✅ Generated filename: ${fileName}`);
@@ -165,7 +166,8 @@ export const addStory = async (
       expiresAt: expiresAt.toISOString(),
       views: [],
       fileName: fileName, // Store filename for deletion
-      isStory: true // Mark as story for identification
+      isStory: true, // Mark as story for identification
+      userId: userId // Add user ID for ownership tracking
     };
     
     console.log(`📅 Story expires at: ${expiresAt.toISOString()}`);

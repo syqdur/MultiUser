@@ -20,6 +20,7 @@ import { PublicRecapPage } from './PublicRecapPage';
 import { PublicGalleryRoute } from './PublicGalleryRoute';
 import { AdminLoginModal } from './AdminLoginModal';
 import { AdminPasswordSetup } from './AdminPasswordSetup';
+import { AdminLoginPanel } from './AdminLoginPanel';
 import { FirebasePermissionsBanner } from './FirebasePermissionsBanner';
 import { ProfileSetupModal } from './ProfileSetupModal';
 import { useAuth } from '../hooks/useAuth';
@@ -40,7 +41,7 @@ import {
   editUserNote
 } from '../services/userFirebaseService';
 import { UserMediaItem } from '../services/userGalleryService';
-import { setupAdminPassword, checkAdminPasswordSetup, hasAdminPassword } from '../services/adminService';
+import { setupAdminPassword, checkAdminPasswordSetup, hasAdminPassword, checkAdminPassword } from '../services/adminService';
 import { subscribeSiteStatus, SiteStatus } from '../services/siteStatusService';
 import {
   subscribeStories,
@@ -90,6 +91,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   const [showAdminPasswordSetup, setShowAdminPasswordSetup] = useState(false);
   const [needsAdminPasswordSetup, setNeedsAdminPasswordSetup] = useState(false);
   const [hasFirebasePermissionErrors, setHasFirebasePermissionErrors] = useState(false);
+  const [showAdminLoginPanel, setShowAdminLoginPanel] = useState(false);
+  const [hasGalleryAdminPassword, setHasGalleryAdminPassword] = useState(false);
 
   // Check if we're on the Spotify callback page
   const isSpotifyCallback = () => {
@@ -206,17 +209,9 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
 
     // Check admin status and password setup
     const checkAdminStatus = async () => {
-      const isSetup = await checkAdminPasswordSetup(user.uid);
       const hasPassword = await hasAdminPassword(user.uid);
-      
-      if (!isSetup) {
-        setNeedsAdminPasswordSetup(true);
-        setShowAdminPasswordSetup(true);
-      } else if (hasPassword) {
-        // User has admin password set up, automatically make them admin
-        setIsAdmin(true);
-        localStorage.setItem('admin_status', 'true');
-      }
+      setHasGalleryAdminPassword(hasPassword);
+      // Don't automatically show password setup anymore
     };
     
     checkAdminStatus();
@@ -435,8 +430,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       }
       
       setShowProfileSetup(false);
-      setStatus('✅ Profile created locally. Will sync when Firebase permissions are fixed.');
-      setTimeout(() => setStatus(''), 5000);
+      setStatus('✅ Profil erfolgreich erstellt!');
+      setTimeout(() => setStatus(''), 3000);
     }
   };
 
@@ -648,13 +643,25 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
                 }}
               />
               <LiveUserIndicator 
-                currentUser={user?.displayName || user?.email || 'Anonymous'} 
+                currentUser={userProfile?.displayName || user?.displayName || user?.email || 'Anonymous'} 
                 isDarkMode={isDarkMode} 
               />
             </div>
             
             <div className="flex items-center space-x-2">
-
+              {/* Admin Button - Always visible */}
+              <button
+                onClick={() => setShowAdminLoginPanel(true)}
+                className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  isDarkMode 
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' 
+                    : 'bg-red-100 hover:bg-red-200 text-red-700'
+                }`}
+                title="Admin Panel"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="text-sm">Admin</span>
+              </button>
               
               <button
                 onClick={toggleDarkMode}
@@ -704,8 +711,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       <div className="max-w-md mx-auto px-4 py-4">
         <StoriesBar
           stories={stories}
-          currentUser={user?.uid || ''}
-          currentUserName={user?.displayName || user?.email || 'Anonymous'}
+          currentUser={userProfile?.displayName || user?.displayName || user?.email || 'Anonymous'}
+          currentUserName={userProfile?.displayName || user?.displayName || user?.email}
           onAddStory={() => setShowStoryUpload(true)}
           onViewStory={handleViewStory}
           isDarkMode={isDarkMode}
@@ -849,15 +856,46 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         isDarkMode={isDarkMode}
       />
 
-      <AdminPasswordSetup
-        isOpen={showAdminPasswordSetup}
-        onClose={() => setShowAdminPasswordSetup(false)}
-        onSave={handleAdminPasswordSave}
-        isDarkMode={isDarkMode}
-        userDisplayName={user?.displayName || user?.email || 'Anonymous'}
-      />
+      {showAdminPasswordSetup && (
+        <AdminPasswordSetup
+          isOpen={showAdminPasswordSetup}
+          onClose={() => setShowAdminPasswordSetup(false)}
+          onSave={handleAdminPasswordSave}
+          isDarkMode={isDarkMode}
+          userDisplayName={userProfile?.displayName || user?.displayName || user?.email || 'Anonymous'}
+        />
+      )}
 
       {/* Profile Setup Modal */}
+      <AdminLoginPanel
+        isOpen={showAdminLoginPanel}
+        onClose={() => setShowAdminLoginPanel(false)}
+        onAdminLogin={() => {
+          setIsAdmin(true);
+          localStorage.setItem('admin_status', 'true');
+          setShowAdminLoginPanel(false);
+          setStatus('✅ Admin-Modus aktiviert!');
+          setTimeout(() => setStatus(''), 3000);
+        }}
+        onShowPasswordSetup={() => {
+          setShowAdminLoginPanel(false);
+          setShowAdminPasswordSetup(true);
+        }}
+        isDarkMode={isDarkMode}
+        userDisplayName={userProfile?.displayName || user?.displayName || user?.email || 'Anonymous'}
+        hasAdminPassword={hasGalleryAdminPassword}
+        onCheckPassword={async (password: string) => {
+          if (!user) return false;
+          try {
+            const isValid = await checkAdminPassword(user.uid, password);
+            return isValid;
+          } catch (error) {
+            console.error('Password check error:', error);
+            return false;
+          }
+        }}
+      />
+
       <ProfileSetupModal
         isOpen={showProfileSetup}
         onClose={() => setShowProfileSetup(false)}
