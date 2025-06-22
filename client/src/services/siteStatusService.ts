@@ -23,9 +23,9 @@ export const getSiteStatus = async (): Promise<SiteStatus> => {
     if (docSnap.exists()) {
       return docSnap.data() as SiteStatus;
     } else {
-      // Default: site is under construction
+      // Default: site is NOT under construction for multi-user platform
       const defaultStatus: SiteStatus = {
-        isUnderConstruction: true,
+        isUnderConstruction: false,
         lastUpdated: new Date().toISOString(),
         updatedBy: 'system'
       };
@@ -36,9 +36,9 @@ export const getSiteStatus = async (): Promise<SiteStatus> => {
     }
   } catch (error) {
     console.error('Error getting site status:', error);
-    // Fallback to under construction if Firebase fails
+    // Fallback to live site if Firebase fails
     return {
-      isUnderConstruction: true,
+      isUnderConstruction: false,
       lastUpdated: new Date().toISOString(),
       updatedBy: 'system'
     };
@@ -78,7 +78,7 @@ export const subscribeSiteStatus = (
     } else {
       // If document doesn't exist, create it with default status
       const defaultStatus: SiteStatus = {
-        isUnderConstruction: true,
+        isUnderConstruction: false,
         lastUpdated: new Date().toISOString(),
         updatedBy: 'system'
       };
@@ -89,9 +89,9 @@ export const subscribeSiteStatus = (
     }
   }, (error) => {
     console.error('Error listening to site status:', error);
-    // Fallback to under construction on error
+    // Fallback to live site on error
     callback({
-      isUnderConstruction: true,
+      isUnderConstruction: false,
       lastUpdated: new Date().toISOString(),
       updatedBy: 'system'
     });
