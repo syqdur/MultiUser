@@ -537,7 +537,9 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         )}
 
         {activeTab === 'music' && (
-          <MusicWishlist isDarkMode={isDarkMode} />
+          <div className="space-y-6">
+            <MusicWishlist isDarkMode={isDarkMode} />
+          </div>
         )}
 
         {activeTab === 'timeline' && (
