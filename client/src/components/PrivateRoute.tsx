@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { AuthModal } from './AuthModal';
+import { AdminPasswordPrompt } from './AdminPasswordPrompt';
+import { checkAdminPasswordSetup, setupAdminPassword } from '../services/adminService';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -9,15 +11,42 @@ interface PrivateRouteProps {
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, isDarkMode }) => {
   const { user, loading } = useAuth();
-  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAdminPasswordSetup, setShowAdminPasswordSetup] = useState(false);
+  const [adminPasswordSetupComplete, setAdminPasswordSetupComplete] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && !user) {
       setShowAuthModal(true);
     } else if (user) {
       setShowAuthModal(false);
+      
+      // Check if admin password setup is needed
+      if (!adminPasswordSetupComplete) {
+        checkAdminPasswordSetup(user.uid).then(isSetup => {
+          if (!isSetup) {
+            setShowAdminPasswordSetup(true);
+          } else {
+            setAdminPasswordSetupComplete(true);
+          }
+        });
+      }
     }
-  }, [user, loading]);
+  }, [user, loading, adminPasswordSetupComplete]);
+
+  const handleAdminPasswordSetup = async (password: string) => {
+    if (!user) return;
+    
+    try {
+      const displayName = user.displayName || user.email || 'Anonymous';
+      await setupAdminPassword(user.uid, password, displayName);
+      setShowAdminPasswordSetup(false);
+      setAdminPasswordSetupComplete(true);
+    } catch (error) {
+      console.error('Error setting up admin password:', error);
+      throw error;
+    }
+  };
 
   if (loading) {
     return (
@@ -77,6 +106,17 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, isDarkMode
           isDarkMode={isDarkMode}
         />
       </>
+    );
+  }
+
+  // Show admin password setup if needed
+  if (showAdminPasswordSetup) {
+    return (
+      <AdminPasswordPrompt
+        userDisplayName={user.displayName || user.email || 'Anonymous'}
+        isDarkMode={isDarkMode}
+        onSetPassword={handleAdminPasswordSetup}
+      />
     );
   }
 

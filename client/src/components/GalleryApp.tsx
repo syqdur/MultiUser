@@ -325,6 +325,20 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     localStorage.removeItem('admin_status');
   };
 
+  const handleAdminPasswordSave = async (password: string) => {
+    if (!user) return;
+    
+    try {
+      const displayName = user.displayName || user.email || 'Anonymous';
+      await setupAdminPassword(user.uid, password, displayName);
+      setNeedsAdminPasswordSetup(false);
+      setShowAdminPasswordSetup(false);
+    } catch (error) {
+      console.error('Error setting up admin password:', error);
+      throw error;
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -588,6 +602,14 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         onClose={() => setShowAdminLogin(false)}
         onLogin={handleAdminLogin}
         isDarkMode={isDarkMode}
+      />
+
+      <AdminPasswordSetup
+        isOpen={showAdminPasswordSetup}
+        onClose={() => setShowAdminPasswordSetup(false)}
+        onSave={handleAdminPasswordSave}
+        isDarkMode={isDarkMode}
+        userDisplayName={user?.displayName || user?.email || 'Anonymous'}
       />
     </div>
   );
