@@ -32,7 +32,6 @@ interface TimelineProps {
   isDarkMode: boolean;
   userName: string;
   isAdmin: boolean;
-  userId?: string;
 }
 
 const eventTypes = [
@@ -46,7 +45,7 @@ const eventTypes = [
   { value: 'other', label: '❤️ Sonstiges', icon: '❤️', color: 'gray' }
 ];
 
-export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmin, userId }) => {
+export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmin }) => {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
@@ -72,14 +71,7 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
 
   // Load timeline events with comprehensive error handling
   useEffect(() => {
-    // Don't start loading if no userId
-    if (!userId) {
-      setIsLoading(false);
-      setEvents([]);
-      return;
-    }
-
-    console.log('🔄 Loading timeline events for user:', userId);
+    console.log('🔄 Loading timeline events...');
     
     let unsubscribe: (() => void) | null = null;
     
@@ -88,10 +80,11 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
         setIsLoading(true);
         setError(null);
         
-        console.log('🔗 Setting up timeline listener...');
+        // Test Firebase connection first
+        console.log('🔗 Testing Firebase connection...');
         
-        // Create query with user-specific collection path
-        const q = query(collection(db, `users/${userId}/timeline`), orderBy('date', 'asc'));
+        // Create query with error handling
+        const q = query(collection(db, 'timeline'), orderBy('date', 'asc'));
         
         unsubscribe = onSnapshot(q, 
           (snapshot) => {
@@ -187,14 +180,10 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
     const types: string[] = [];
     const fileNames: string[] = [];
     
-    if (!userId) {
-      throw new Error('Benutzer-Authentifizierung erforderlich');
-    }
-    
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileName = `TIMELINE_${Date.now()}-${i}-${file.name}`;
-      const storageRef = ref(storage, `users/${userId}/timeline/${fileName}`);
+      const storageRef = ref(storage, `uploads/${fileName}`);
       
       try {
         console.log(`📤 Uploading timeline file: ${fileName}`);
@@ -262,19 +251,15 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
         ...mediaData
       };
 
-      if (!userId) {
-        throw new Error('Benutzer-Authentifizierung erforderlich');
-      }
-      
       if (editingEvent) {
         // Update existing event
         console.log('📝 Updating existing timeline event...');
-        await updateDoc(doc(db, `users/${userId}/timeline`, editingEvent.id), eventData);
+        await updateDoc(doc(db, 'timeline', editingEvent.id), eventData);
         console.log('✅ Timeline event updated successfully');
       } else {
         // Add new event
         console.log('➕ Adding new timeline event...');
-        await addDoc(collection(db, `users/${userId}/timeline`), {
+        await addDoc(collection(db, 'timeline'), {
           ...eventData,
           createdBy: userName,
           createdAt: new Date().toISOString()
@@ -330,15 +315,11 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
       console.log('Event:', event.title);
       console.log('Media files:', event.mediaFileNames?.length || 0);
       
-      if (!userId) {
-        throw new Error('Benutzer-Authentifizierung erforderlich');
-      }
-
       // Delete media files from storage
       if (event.mediaFileNames && event.mediaFileNames.length > 0) {
         console.log('🗑️ Deleting media files from storage...');
         const deletePromises = event.mediaFileNames.map(fileName => {
-          const storageRef = ref(storage, `users/${userId}/timeline/${fileName}`);
+          const storageRef = ref(storage, `uploads/${fileName}`);
           return deleteObject(storageRef).catch(error => {
             console.warn(`⚠️ Could not delete file ${fileName}:`, error);
           });
@@ -349,7 +330,7 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
 
       // Delete event from Firestore
       console.log('🗑️ Deleting event from Firestore...');
-      await deleteDoc(doc(db, `users/${userId}/timeline`, event.id));
+      await deleteDoc(doc(db, 'timeline', event.id));
       console.log('✅ Timeline event deleted successfully');
     } catch (error: any) {
       console.error('❌ Error deleting timeline event:', error);

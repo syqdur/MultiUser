@@ -19,6 +19,7 @@ import { PublicRecapPage } from './PublicRecapPage';
 import { PublicGalleryRoute } from './PublicGalleryRoute';
 import { AdminLoginModal } from './AdminLoginModal';
 import { AdminPasswordSetup } from './AdminPasswordSetup';
+import { FirebasePermissionsBanner } from './FirebasePermissionsBanner';
 import { useAuth } from '../hooks/useAuth';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { MediaItem, Comment, Like } from '../types';
@@ -73,6 +74,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPasswordSetup, setShowAdminPasswordSetup] = useState(false);
   const [needsAdminPasswordSetup, setNeedsAdminPasswordSetup] = useState(false);
+  const [hasFirebasePermissionErrors, setHasFirebasePermissionErrors] = useState(false);
 
   // Check if we're on the Spotify callback page
   const isSpotifyCallback = () => {
@@ -111,7 +113,11 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     // Subscribe to stories (admin sees all, users see only active)
     const unsubscribeStories = isAdmin 
       ? subscribeAllStories(setStories)
-      : subscribeStories(setStories);
+      : subscribeStories(user.uid, setStories, (error) => {
+          if (error?.code === 'permission-denied') {
+            setHasFirebasePermissionErrors(true);
+          }
+        });
 
     // Cleanup expired stories periodically
     const cleanupInterval = setInterval(() => {
@@ -137,9 +143,21 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
 
     if (!siteStatus || siteStatus.isUnderConstruction) return;
 
-    const unsubscribeGallery = loadUserGallery(user.uid, setMediaItems);
-    const unsubscribeComments = loadUserComments(user.uid, setComments);
-    const unsubscribeLikes = loadUserLikes(user.uid, setLikes);
+    const unsubscribeGallery = loadUserGallery(user.uid, setMediaItems, (error) => {
+      if (error?.code === 'permission-denied') {
+        setHasFirebasePermissionErrors(true);
+      }
+    });
+    const unsubscribeComments = loadUserComments(user.uid, setComments, (error) => {
+      if (error?.code === 'permission-denied') {
+        setHasFirebasePermissionErrors(true);
+      }
+    });
+    const unsubscribeLikes = loadUserLikes(user.uid, setLikes, (error) => {
+      if (error?.code === 'permission-denied') {
+        setHasFirebasePermissionErrors(true);
+      }
+    });
 
     return () => {
       unsubscribeGallery();
@@ -494,6 +512,13 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         </div>
       )}
 
+      {/* Firebase Permissions Banner */}
+      {hasFirebasePermissionErrors && (
+        <div className="max-w-md mx-auto px-4 py-2">
+          <FirebasePermissionsBanner isDarkMode={isDarkMode} />
+        </div>
+      )}
+
       {/* Stories Bar */}
       <div className="max-w-md mx-auto px-4 py-4">
         <StoriesBar
@@ -558,6 +583,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
             isDarkMode={isDarkMode}
             userName={user?.displayName || user?.email || 'Anonymous'}
             isAdmin={isAdmin}
+            userId={user?.uid}
           />
         )}
       </div>

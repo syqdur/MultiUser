@@ -167,12 +167,13 @@ export const deleteUserMediaItem = async (
 // Subscribe to user media with isolation
 export const loadUserGallery = (
   userId: string,
-  callback: (items: UserMediaItem[]) => void
+  callback: (items: UserMediaItem[]) => void,
+  onError?: (error: any) => void
 ): (() => void) => {
+  // Use simple query without orderBy to avoid composite index requirements
   const q = query(
     collection(db, 'user_media'),
-    where('galleryId', '==', userId),
-    orderBy('uploadedAt', 'desc')
+    where('galleryId', '==', userId)
   );
   
   return onSnapshot(q, async (snapshot) => {
@@ -181,16 +182,8 @@ export const loadUserGallery = (
     for (const doc of snapshot.docs) {
       const data = doc.data();
       
-      // Verify URL accessibility for media files
+      // Skip URL verification to avoid fetch errors
       let isUnavailable = false;
-      if (data.type !== 'note' && data.url) {
-        try {
-          const response = await fetch(data.url, { method: 'HEAD' });
-          isUnavailable = !response.ok;
-        } catch {
-          isUnavailable = true;
-        }
-      }
       
       items.push({
         id: doc.id,
@@ -209,11 +202,15 @@ export const loadUserGallery = (
       });
     }
     
+    // Sort items by uploadedAt in JavaScript since we can't use orderBy with where clause
+    items.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    
     console.log(`Loaded ${items.length} media items for user ${userId}`);
     callback(items);
     
   }, (error) => {
     console.error('Error loading user gallery:', error);
+    if (onError) onError(error);
     callback([]);
   });
 };
@@ -221,12 +218,13 @@ export const loadUserGallery = (
 // User-specific comments
 export const loadUserComments = (
   userId: string,
-  callback: (comments: any[]) => void
+  callback: (comments: any[]) => void,
+  onError?: (error: any) => void
 ): (() => void) => {
+  // Use simple query without orderBy to avoid composite index requirement
   const q = query(
     collection(db, 'user_comments'),
-    where('galleryId', '==', userId),
-    orderBy('createdAt', 'asc')
+    where('galleryId', '==', userId)
   );
   
   return onSnapshot(q, (snapshot) => {
@@ -235,11 +233,15 @@ export const loadUserComments = (
       ...doc.data()
     }));
     
+    // Sort by createdAt in JavaScript
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
     console.log(`Loaded ${comments.length} comments for user ${userId}`);
     callback(comments);
     
   }, (error) => {
     console.error('Error loading user comments:', error);
+    if (onError) onError(error);
     callback([]);
   });
 };
@@ -274,12 +276,13 @@ export const deleteUserComment = async (
 // User-specific likes
 export const loadUserLikes = (
   userId: string,
-  callback: (likes: any[]) => void
+  callback: (likes: any[]) => void,
+  onError?: (error: any) => void
 ): (() => void) => {
+  // Use simple query without orderBy to avoid composite index requirement
   const q = query(
     collection(db, 'user_likes'),
-    where('galleryId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('galleryId', '==', userId)
   );
   
   return onSnapshot(q, (snapshot) => {
@@ -288,11 +291,15 @@ export const loadUserLikes = (
       ...doc.data()
     }));
     
+    // Sort by createdAt in JavaScript
+    likes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
     console.log(`Loaded ${likes.length} likes for user ${userId}`);
     callback(likes);
     
   }, (error) => {
     console.error('Error loading user likes:', error);
+    if (onError) onError(error);
     callback([]);
   });
 };

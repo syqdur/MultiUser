@@ -92,11 +92,11 @@ export const addStory = async (
     // === STEP 4: UPLOAD TO STORAGE ===
     console.log(`📤 Step 4: Uploading to Firebase Storage...`);
     
-    // 🔧 FIX: Use 'uploads/' path instead of 'stories/' to match existing permissions
-    storageRef = ref(storage, `uploads/${fileName}`);
+    // Use user-specific storage path that matches our Firebase rules
+    storageRef = ref(storage, `users/${userId}/stories/${fileName}`);
     
     try {
-      console.log(`📤 Starting upload to: uploads/${fileName}`);
+      console.log(`📤 Starting upload to: users/${userId}/stories/${fileName}`);
       const uploadResult = await uploadBytes(storageRef, file);
       uploadedToStorage = true;
       
@@ -163,7 +163,7 @@ export const addStory = async (
     console.log(`💾 Step 7: Saving to Firestore...`);
     
     try {
-      const docRef = await addDoc(collection(db, 'stories'), storyData);
+      const docRef = await addDoc(collection(db, `users/${userId}/stories`), storyData);
       console.log(`✅ Story saved to Firestore with ID: ${docRef.id}`);
       console.log(`🎉 === STORY UPLOAD COMPLETED SUCCESSFULLY ===`);
       
@@ -213,12 +213,12 @@ export const addStory = async (
 };
 
 // 🔧 MAJOR FIX: Simplified stories subscription without complex queries
-export const subscribeStories = (callback: (stories: Story[]) => void): (() => void) => {
-  console.log(`📱 === SUBSCRIBING TO STORIES (SIMPLIFIED) ===`);
+export const subscribeStories = (userId: string, callback: (stories: Story[]) => void, onError?: (error: any) => void): (() => void) => {
+  console.log(`📱 === SUBSCRIBING TO USER STORIES ===`);
   
-  // 🔧 FIX: Use simple query without complex where clauses that might fail
+  // Use user-specific collection path that matches our Firebase rules
   const q = query(
-    collection(db, 'stories'),
+    collection(db, `users/${userId}/stories`),
     orderBy('createdAt', 'desc')
   );
   
@@ -261,6 +261,7 @@ export const subscribeStories = (callback: (stories: Story[]) => void): (() => v
       message: error.message,
       stack: error.stack
     });
+    if (onError) onError(error);
     callback([]);
   });
 };
