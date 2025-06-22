@@ -35,6 +35,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<string>('');
 
+  console.log('ProfileSetupModal render - isOpen:', isOpen);
   if (!isOpen) return null;
 
   const themes = [
@@ -314,23 +315,14 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({
         {/* Footer */}
         <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
           <button
-            onClick={() => {
-              // Create a basic profile with default values if user skips
-              const defaultProfile = {
-                displayName: 'Gallery User',
-                bio: 'Welcome to my gallery!',
-                profilePictureUrl: '',
-                theme: 'wedding' as const
-              };
-              onComplete(defaultProfile);
-            }}
+            onClick={() => onClose()}
             className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
               isDarkMode
                 ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Skip for Now
+            Cancel
           </button>
           <button
             onClick={handleSubmit}

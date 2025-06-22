@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Pause, Play, Trash2, Eye, Share2 } from 'lucide-react';
 import { Story } from '../services/liveService';
 import { StoryShareModal } from './StoryShareModal';
@@ -15,7 +15,7 @@ interface StoriesViewerProps {
   isDarkMode: boolean;
 }
 
-export const StoriesViewer: React.FC<StoriesViewerProps> = ({
+export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
   isOpen,
   stories,
   initialStoryIndex,
@@ -32,54 +32,79 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const currentStory = stories[currentIndex];
+  // Memoize current story to prevent unnecessary re-renders
+  const currentStory = useMemo(() => stories[currentIndex], [stories, currentIndex]);
   const STORY_DURATION = 5000; // 5 seconds per story
 
-  // Check if current user can delete this story
-  // For stories, we need to compare deviceId (which is the user ID) with currentUser (which is also user ID)
-  const canDeleteStory = isAdmin || (currentStory && currentStory.deviceId === currentUser);
+  // Memoize permission check
+  const canDeleteStory = useMemo(() => 
+    isAdmin || (currentStory && currentStory.deviceId === currentUser), 
+    [isAdmin, currentStory, currentUser]
+  );
 
+  // Reset index when stories change
+  useEffect(() => {
+    setCurrentIndex(initialStoryIndex);
+    setProgress(0);
+  }, [initialStoryIndex]);
+
+  // Preload media with stable reference
   useEffect(() => {
     if (!isOpen || !currentStory) return;
 
-    // Mark story as viewed
-    onStoryViewed(currentStory.id);
-    setIsLoading(true);
     setProgress(0);
+    setIsLoading(true);
 
-    // Preload media
+    // Mark story as viewed (debounced to prevent multiple calls)
+    const viewTimeout = setTimeout(() => {
+      onStoryViewed(currentStory.id);
+    }, 100);
+
+    // Preload media with better error handling
     if (currentStory.mediaType === 'image') {
       const img = new Image();
-      img.onload = () => setIsLoading(false);
-      img.onerror = () => setIsLoading(false);
+      img.onload = () => {
+        setIsLoading(false);
+      };
+      img.onerror = () => {
+        console.warn('Failed to load story image:', currentStory.mediaUrl);
+        setIsLoading(false);
+      };
       img.src = currentStory.mediaUrl;
     } else {
-      // For videos, we'll set loading to false immediately
-      // In a real app, you'd want to wait for video to be ready
-      setIsLoading(false);
+      // For videos, set a small delay to prevent flickering
+      const loadTimeout = setTimeout(() => {
+        setIsLoading(false);
+      }, 200);
+      
+      return () => {
+        clearTimeout(viewTimeout);
+        clearTimeout(loadTimeout);
+      };
     }
-  }, [currentIndex, currentStory, isOpen, onStoryViewed]);
+
+    return () => clearTimeout(viewTimeout);
+  }, [currentStory?.id, currentStory?.mediaType, currentStory?.mediaUrl, isOpen, onStoryViewed]);
 
   useEffect(() => {
     if (!isOpen || isPaused || isLoading) return;
 
+    const startTime = Date.now();
     const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + (100 / (STORY_DURATION / 100));
-        
-        if (newProgress >= 100) {
-          // Move to next story
-          if (currentIndex < stories.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-          } else {
-            onClose();
-          }
-          return 0;
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / STORY_DURATION) * 100, 100);
+      
+      setProgress(newProgress);
+      
+      if (newProgress >= 100) {
+        // Move to next story
+        if (currentIndex < stories.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          onClose();
         }
-        
-        return newProgress;
-      });
-    }, 100);
+      }
+    }, 50); // Smoother updates with 50ms interval
 
     return () => clearInterval(interval);
   }, [isOpen, isPaused, isLoading, currentIndex, stories.length, onClose]);
@@ -110,23 +135,26 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isOpen, currentIndex, stories.length]);
 
-  const goToNext = () => {
+  // Memoize navigation functions to prevent re-renders
+  const goToNext = useCallback(() => {
+    setProgress(0); // Reset progress immediately
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       onClose();
     }
-  };
+  }, [currentIndex, stories.length, onClose]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
+    setProgress(0); // Reset progress immediately
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
     }
-  };
+  }, [currentIndex]);
 
-  const togglePause = () => {
+  const togglePause = useCallback(() => {
     setIsPaused(prev => !prev);
-  };
+  }, []);
 
   const handleDeleteStory = () => {
     if (!currentStory || !canDeleteStory) return;
@@ -164,7 +192,10 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
     return `vor ${Math.floor(diffInHours / 24)}d`;
   };
 
-  const getAvatarUrl = (username: string) => {
+
+
+  // Memoize avatar generation
+  const getAvatarUrl = useCallback((username: string) => {
     const weddingAvatars = [
       'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
       'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
@@ -184,7 +215,7 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
     }, 0);
     
     return weddingAvatars[Math.abs(hash) % weddingAvatars.length];
-  };
+  }, []);
 
   if (!isOpen || !currentStory) return null;
 
@@ -192,13 +223,17 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex gap-1 z-10">
-        {stories.map((_, index) => (
-          <div key={index} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
+        {stories.map((story, index) => (
+          <div key={`progress-${story.id}`} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-white transition-all duration-100 ease-linear"
+              className={`h-full bg-white ${
+                index === currentIndex ? 'transition-none' : 'transition-all duration-300 ease-out'
+              }`}
               style={{ 
                 width: index < currentIndex ? '100%' : 
-                       index === currentIndex ? `${progress}%` : '0%'
+                       index === currentIndex ? `${progress}%` : '0%',
+                transform: 'translateZ(0)', // Hardware acceleration
+                willChange: index === currentIndex ? 'width' : 'auto'
               }}
             />
           </div>
@@ -272,19 +307,23 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
 
         {currentStory.mediaType === 'image' ? (
           <img
+            key={`story-image-${currentStory.id}`}
             src={currentStory.mediaUrl}
             alt="Story"
-            className="max-w-full max-h-full object-contain"
+            className="max-w-full max-h-full object-contain transition-opacity duration-300"
             style={{ opacity: isLoading ? 0 : 1 }}
+            onLoad={() => setIsLoading(false)}
           />
         ) : (
           <video
+            key={`story-video-${currentStory.id}`}
             src={currentStory.mediaUrl}
-            className="max-w-full max-h-full object-contain"
+            className="max-w-full max-h-full object-contain transition-opacity duration-300"
             autoPlay
             muted
             playsInline
             style={{ opacity: isLoading ? 0 : 1 }}
+            onLoadedData={() => setIsLoading(false)}
           />
         )}
 
@@ -349,4 +388,4 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
       />
     </div>
   );
-};
+});

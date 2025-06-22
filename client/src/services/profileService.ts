@@ -18,12 +18,21 @@ export const createUserProfile = async (
   userId: string,
   profile: Partial<UserProfile>
 ): Promise<UserProfile> => {
+  // Generate a clean website URL from display name
+  const generateWebsiteUrl = (displayName: string) => {
+    return displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '') // Remove special characters
+      .slice(0, 15) // Limit length
+      + '.gallery';
+  };
+
   const defaultProfile: UserProfile = {
     displayName: profile.displayName || 'Gallery User',
     bio: profile.bio || 'Welcome to my gallery!',
     profilePictureUrl: profile.profilePictureUrl || '',
     theme: profile.theme || 'wedding',
-    website: profile.website || `${userId.slice(0, 8)}.gallery`,
+    website: profile.website || generateWebsiteUrl(profile.displayName || 'gallery'),
     followerCount: '∞',
     createdAt: new Date(),
     updatedAt: new Date()
@@ -65,10 +74,20 @@ export const updateProfileName = async (
 ): Promise<void> => {
   const batch = writeBatch(db);
 
-  // Update the user profile
+  // Generate a clean website URL from the new display name
+  const generateWebsiteUrl = (displayName: string) => {
+    return displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '') // Remove special characters
+      .slice(0, 15) // Limit length
+      + '.gallery';
+  };
+
+  // Update the user profile with new name and website
   const profileRef = doc(db, 'user_profiles', userId);
   batch.update(profileRef, {
     displayName: newDisplayName,
+    website: generateWebsiteUrl(newDisplayName),
     updatedAt: new Date()
   });
 

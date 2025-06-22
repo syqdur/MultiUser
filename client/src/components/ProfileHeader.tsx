@@ -11,6 +11,7 @@ interface ProfileHeaderProps {
   isAdmin: boolean;
   userProfile?: UserProfile | null;
   onProfileUpdate?: (profile: UserProfile) => void;
+  onEditProfile?: () => void;
 }
 
 interface UserProfile {
@@ -26,7 +27,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   isDarkMode, 
   isAdmin, 
   userProfile, 
-  onProfileUpdate 
+  onProfileUpdate,
+  onEditProfile
 }) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
@@ -64,7 +66,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       bio: 'Share your story here...',
       profilePictureUrl: '',
       followerCount: '∞',
-      website: user.email?.split('@')[0] + '.gallery' || 'your.gallery'
+      website: (user.displayName || user.email?.split('@')[0] || 'user')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .slice(0, 15) + '.gallery'
     };
 
     const profileData = await safeFirebaseOperation(
@@ -304,13 +309,17 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </>
         )}
         
-        <button className={`p-1.5 rounded-md transition-colors duration-300 ${
-          isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-        }`}>
-          <Settings className={`w-4 h-4 transition-colors duration-300 ${
-            isDarkMode ? 'text-gray-300' : 'text-gray-600'
-          }`} />
-        </button>
+        {onEditProfile && (
+          <button 
+            onClick={onEditProfile}
+            className={`p-1.5 rounded-md transition-colors duration-300 ${
+              isDarkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
+            }`}
+            title="Setup Profile"
+          >
+            <Settings className="w-4 h-4 text-white" />
+          </button>
+        )}
       </div>
     </div>
   );

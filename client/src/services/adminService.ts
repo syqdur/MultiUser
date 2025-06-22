@@ -24,8 +24,13 @@ export const setupAdminPassword = async (
     // Hash the password
     const hashedPassword = hashPassword(password);
     
-    // Create gallery with admin password
-    await createUserGallery(userId, displayName, hashedPassword);
+    // Ensure we use the display name instead of user ID for gallery
+    const galleryName = displayName && displayName.length > 0 && !displayName.includes('-') 
+      ? displayName 
+      : 'Gallery Admin';
+    
+    // Create gallery with admin password and proper name
+    await createUserGallery(userId, galleryName, hashedPassword);
     
     // Try to update user document, but don't fail if permissions are missing
     try {
@@ -38,7 +43,7 @@ export const setupAdminPassword = async (
       // Continue anyway as the gallery was created successfully
     }
     
-    console.log(`✅ Admin password setup completed for user ${userId}`);
+    console.log(`✅ Admin password setup completed for user ${userId} with gallery name: ${galleryName}`);
   } catch (error) {
     console.error('Error setting up admin password:', error);
     

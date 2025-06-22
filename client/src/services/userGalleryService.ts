@@ -49,15 +49,20 @@ export interface UserMediaItem {
   isUnavailable?: boolean;
 }
 
-// Create default gallery for new user
+// Create default gallery for new user with proper name handling
 export const createUserGallery = async (
   userId: string,
   userName: string,
   adminPassword?: string
 ): Promise<void> => {
+  // Ensure we have a meaningful name, not a UID
+  const displayName = userName && userName.length > 0 && !userName.includes('-') && !userName.includes('_') 
+    ? userName 
+    : 'Meine Galerie';
+    
   const defaultGallery: UserGallery = {
     id: userId,
-    title: `${userName}'s Hochzeitsgalerie`,
+    title: `${displayName}s Hochzeitsgalerie`,
     description: 'Willkommen in unserer wunderschönen Hochzeitsgalerie!',
     theme: 'elegant',
     public: false,

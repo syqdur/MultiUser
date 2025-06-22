@@ -117,20 +117,52 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       try {
         const profile = await getUserProfile(user.uid);
         if (profile) {
-          setUserProfile(profile);
-          changeTheme(profile.theme);
+          // Fix old website URLs that use Firebase UID
+          let updatedProfile = profile;
+          if (profile.website && profile.website.includes('.gallery') && profile.website.length > 20) {
+            const generateWebsiteUrl = (displayName: string) => {
+              return displayName
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '')
+                .slice(0, 15) + '.gallery';
+            };
+            
+            const newWebsiteUrl = generateWebsiteUrl(profile.displayName);
+            updatedProfile = {
+              ...profile,
+              website: newWebsiteUrl
+            };
+            
+            // Update the profile in Firebase with the corrected website URL
+            if (user) {
+              import('../services/profileService').then(({ updateUserProfile }) => {
+                updateUserProfile(user.uid, { website: newWebsiteUrl });
+              });
+            }
+          }
+          
+          setUserProfile(updatedProfile);
+          changeTheme(updatedProfile.theme);
+          console.log('✅ User profile loaded:', updatedProfile.displayName, 'Website:', updatedProfile.website);
         } else {
           // For new users or when profile doesn't exist, show setup modal
+          console.log('🔧 No profile found for user, showing profile setup modal');
           setShowProfileSetup(true);
         }
       } catch (error) {
         console.error('Error loading profile:', error);
         // If Firebase has permission issues, still show profile setup for new users
+        console.log('🔧 Firebase error, showing profile setup modal for new user');
         setShowProfileSetup(true);
       }
     };
 
-    loadProfile();
+    // Add a small delay to ensure the user state is fully loaded
+    const timer = setTimeout(() => {
+      loadProfile();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [user, changeTheme]);
 
   // Subscribe to site status changes
@@ -360,15 +392,24 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     if (!user) return;
 
     try {
+      // Use the profile display name for gallery creation
+      const galleryName = profile.displayName || user.displayName || user.email?.split('@')[0] || 'Gallery User';
+      
       const createdProfile = await createUserProfile(user.uid, profile);
       setUserProfile(createdProfile);
       changeTheme(profile.theme);
+      
+      // Create gallery with proper name from profile
+      await createUserGallery(user.uid, galleryName);
+      
       setShowProfileSetup(false);
-      setStatus('✅ Profile created successfully!');
+      setStatus('✅ Profile and gallery created successfully!');
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       console.error('Error creating profile:', error);
       // Even if Firebase save fails, set local profile and continue
+      const galleryName = profile.displayName || user.displayName || user.email?.split('@')[0] || 'Gallery User';
+      
       const localProfile = {
         displayName: profile.displayName,
         bio: profile.bio,
@@ -381,6 +422,14 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       };
       setUserProfile(localProfile);
       changeTheme(profile.theme);
+      
+      // Try to create gallery locally with proper name
+      try {
+        await createUserGallery(user.uid, galleryName);
+      } catch (galleryError) {
+        console.warn('Could not create gallery:', galleryError);
+      }
+      
       setShowProfileSetup(false);
       setStatus('✅ Profile created locally. Will sync when Firebase permissions are fixed.');
       setTimeout(() => setStatus(''), 5000);
@@ -388,6 +437,21 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   };
 
   const handleProfileUpdate = (updatedProfile: any) => {
+    // Generate clean website URL if it's still using the old format
+    if (updatedProfile.website && updatedProfile.website.includes('.gallery') && updatedProfile.website.length > 20) {
+      const generateWebsiteUrl = (displayName: string) => {
+        return displayName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 15) + '.gallery';
+      };
+      
+      updatedProfile = {
+        ...updatedProfile,
+        website: generateWebsiteUrl(updatedProfile.displayName)
+      };
+    }
+    
     setUserProfile(updatedProfile);
     if (updatedProfile.theme) {
       changeTheme(updatedProfile.theme);
@@ -574,6 +638,10 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
                 isAdmin={isAdmin} 
                 userProfile={userProfile}
                 onProfileUpdate={handleProfileUpdate}
+                onEditProfile={() => {
+                  console.log('🔧 Profile setup button clicked');
+                  setShowProfileSetup(true);
+                }}
               />
               <LiveUserIndicator 
                 currentUser={user?.displayName || user?.email || 'Anonymous'} 
@@ -787,6 +855,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
         userId={user?.uid || ''}
         isDarkMode={isDarkMode}
       />
+
+
     </div>
   );
 };

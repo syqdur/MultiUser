@@ -42,16 +42,19 @@ export function useAuth(): UseAuthReturn {
     // Update the user's display name
     await updateProfile(newUser, { displayName });
     
-    // Create user document in Firestore
+    // Create user document in Firestore - but don't create profile yet
+    // Profile will be created through the ProfileSetupModal
     await setDoc(doc(db, 'users', newUser.uid), {
       email: newUser.email,
       displayName,
       createdAt: new Date(),
       uid: newUser.uid,
+      needsProfileSetup: true, // Flag to show profile setup modal
       needsAdminPasswordSetup: true // Flag to show admin password setup
     });
 
-    // Gallery will be created after admin password setup
+    console.log('✅ New user created:', newUser.uid, 'Display name:', displayName);
+    // Profile setup modal will be triggered in GalleryApp when getUserProfile returns null
   };
 
   const signIn = async (email: string, password: string) => {
