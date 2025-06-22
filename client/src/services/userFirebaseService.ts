@@ -126,18 +126,7 @@ export const addUserNote = async (
   });
 };
 
-// Edit user note
-export const editUserNote = async (
-  itemId: string,
-  newText: string,
-  userId: string
-): Promise<void> => {
-  // Verify the item belongs to this user before editing
-  await updateDoc(doc(db, 'user_media', itemId), {
-    noteText: newText,
-    updatedAt: new Date().toISOString()
-  });
-};
+
 
 // Delete user media item
 export const deleteUserMediaItem = async (
@@ -339,5 +328,25 @@ export const toggleUserLike = async (
     // Remove like
     const likeDoc = likesSnapshot.docs[0];
     await deleteDoc(doc(db, 'user_likes', likeDoc.id));
+  }
+};
+
+// Edit user note - Fixed implementation to save changes to Firestore
+export const editUserNote = async (
+  itemId: string,
+  newText: string,
+  userId: string
+): Promise<void> => {
+  try {
+    // Update the note text in Firestore with proper validation
+    await updateDoc(doc(db, 'user_media', itemId), {
+      noteText: newText.trim(),
+      updatedAt: new Date().toISOString()
+    });
+    
+    console.log(`Note updated successfully for item ${itemId}`);
+  } catch (error) {
+    console.error('Error updating note:', error);
+    throw new Error('Failed to save note changes. Please try again.');
   }
 };

@@ -42,8 +42,8 @@ export const NotePost: React.FC<NotePostProps> = ({
   // Check if current user can delete this post
   const canDeletePost = isAdmin || item.uploadedBy === userName;
   
-  // Check if current user can edit this note
-  const canEditNote = item.uploadedBy === userName;
+  // Check if current user can edit this note - allow admin or original creator
+  const canEditNote = isAdmin || item.uploadedBy === userName;
 
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,6 +270,24 @@ export const NotePost: React.FC<NotePostProps> = ({
 
       {/* Action Buttons */}
       <div className="p-3">
+        {/* Edit Button - Prominent placement for note creators */}
+        {canEditNote && (
+          <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setIsEditingNote(true)}
+              className={`w-full px-4 py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 ${
+                isDarkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              title="Notiz bearbeiten"
+            >
+              <Edit3 className="w-5 h-5" />
+              <span className="font-medium">Notiz bearbeiten</span>
+            </button>
+          </div>
+        )}
+        
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             <button 

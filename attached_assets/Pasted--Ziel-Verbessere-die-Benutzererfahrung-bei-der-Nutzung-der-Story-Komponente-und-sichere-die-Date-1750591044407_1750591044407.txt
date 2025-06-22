@@ -1,0 +1,94 @@
+🎯 Ziel:
+Verbessere die Benutzererfahrung bei der Nutzung der Story-Komponente und sichere die Datenintegrität und individuelle Kontrolle über Inhalte durch Besucher-ID-Tracking und Rechteverwaltung.
+
+1. ✅ BUGFIX: Story-Komponente flackert und Fortschrittsbar funktioniert nicht korrekt
+Beschreibung:
+
+Beim Abspielen von Storys kommt es zu einem visuellen Flackern.
+
+Die Fortschrittsleiste (Progress-Bar) ist entweder fehlerhaft oder inkonsistent.
+
+Ziel:
+
+Fehlerfreies sequentielles Abspielen aller Storys.
+
+Korrekte Anzeige der Fortschrittsbar je nach Dauer (ähnlich wie bei Instagram/Snapchat).
+
+Kein Flackern beim Übergang.
+
+Technischer Hinweis:
+
+Prüfe Zustandshandling in der useEffect-Logik.
+
+Stelle sicher, dass Komponenten nicht unnötig neu gemountet werden.
+
+Progressbar eventuell mit setInterval oder requestAnimationFrame koppeln statt setTimeout.
+
+2. 🧠 Feature: Besucher sollen automatisch einer anonymen ID zugewiesen werden
+Beschreibung:
+
+Jeder Besucher soll automatisch eine eindeutige ID erhalten – idealerweise gerätebasiert (Fingerprint oder UUID).
+
+Diese ID wird genutzt, um:
+
+Hochgeladene Inhalte zuzuordnen.
+
+Löschrechte nur für den Uploader zu ermöglichen.
+
+Nachverfolgung der Besucher ohne Login.
+
+Technische Umsetzung:
+
+Nutze localStorage zur persistierenden Speicherung der ID im Browser.
+
+Erzeuge die ID mit z. B. uuidv4() oder über ein Fingerprinting-Modul.
+
+Beim Upload speichere uploadedByVisitorId im Firestore-Dokument.
+
+Nutze Firebase-Security-Rules zur Absicherung (z. B. request.auth.token.visitorId == resource.data.uploadedByVisitorId falls mit Custom Claims).
+
+Ziel:
+
+Jeder Besucher erhält eine einmalige ID.
+
+Diese ID bleibt auch beim erneuten Aufrufen der Seite bestehen (lokal gespeichert).
+
+Anonyme, aber kontrollierte Zuweisung von Uploads.
+
+3. 🔒 Feature: Nur der Ersteller darf seine Inhalte löschen (ausser admin)
+Beschreibung:
+
+Aktuell kann jeder Inhalte anderer Besucher löschen.
+
+Es fehlt eine Zugriffsbeschränkung pro Upload.
+
+Technische Umsetzung:
+
+Beim Upload speichere die visitorId als ownerId im Dokument.
+
+Löschen (Button anzeigen und erlauben) nur, wenn ownerId === localVisitorId.
+
+Firebase Security Rules entsprechend erweitern: (sind aber schon richtig)
+
+js
+
+match /galleries/{userId}/{mediaId} {
+  allow delete: if request.auth.token.visitorId == resource.data.ownerId;
+}
+Oder bei anonymen Usern ohne Auth:
+
+js
+
+allow delete: if request.resource.data.ownerId == request.resource.data.visitorId;
+4. 📝 BUGFIX: Notizen (Notes) sind visuell editierbar, aber Änderungen werden nicht gespeichert
+Beschreibung:
+
+Änderungen im Notizen-Feld sind möglich, werden aber nicht in Firestore gespeichert.
+
+Lösung:
+
+Stelle sicher, dass beim Speichern ein Update auf das Firestore-Dokument erfolgt (updateDoc()).
+
+Füge eine onBlur- oder „Speichern“-Schaltfläche hinzu.
+
+Zeige Feedback nach dem Speichern (✅ „Notiz gespeichert“).

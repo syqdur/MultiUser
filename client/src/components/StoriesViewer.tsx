@@ -36,9 +36,9 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
   const currentStory = useMemo(() => stories[currentIndex], [stories, currentIndex]);
   const STORY_DURATION = 5000; // 5 seconds per story
 
-  // Memoize permission check
+  // Enhanced permission check using visitor ID for deletion rights
   const canDeleteStory = useMemo(() => 
-    isAdmin || (currentStory && currentStory.deviceId === currentUser), 
+    isAdmin || (currentStory && (currentStory.visitorId === currentUser || currentStory.deviceId === currentUser)), 
     [isAdmin, currentStory, currentUser]
   );
 
@@ -48,7 +48,7 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
     setProgress(0);
   }, [initialStoryIndex]);
 
-  // Preload media with stable reference
+  // Fixed media preloading to prevent flickering
   useEffect(() => {
     if (!isOpen || !currentStory) return;
 
@@ -60,11 +60,12 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
       onStoryViewed(currentStory.id);
     }, 100);
 
-    // Preload media with better error handling
+    // Enhanced preloading with proper cleanup
     if (currentStory.mediaType === 'image') {
       const img = new Image();
       img.onload = () => {
-        setIsLoading(false);
+        // Small delay to prevent flicker
+        setTimeout(() => setIsLoading(false), 50);
       };
       img.onerror = () => {
         console.warn('Failed to load story image:', currentStory.mediaUrl);
@@ -72,25 +73,29 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
       };
       img.src = currentStory.mediaUrl;
     } else {
-      // For videos, set a small delay to prevent flickering
-      const loadTimeout = setTimeout(() => {
-        setIsLoading(false);
-      }, 200);
-      
-      return () => {
-        clearTimeout(viewTimeout);
-        clearTimeout(loadTimeout);
+      // For videos, wait for metadata to load
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        setTimeout(() => setIsLoading(false), 100);
       };
+      video.onerror = () => {
+        console.warn('Failed to load story video:', currentStory.mediaUrl);
+        setIsLoading(false);
+      };
+      video.src = currentStory.mediaUrl;
     }
 
     return () => clearTimeout(viewTimeout);
   }, [currentStory?.id, currentStory?.mediaType, currentStory?.mediaUrl, isOpen, onStoryViewed]);
 
+  // Fixed progress bar with requestAnimationFrame for smooth rendering
   useEffect(() => {
     if (!isOpen || isPaused || isLoading) return;
 
-    const startTime = Date.now();
-    const interval = setInterval(() => {
+    let animationFrame: number;
+    let startTime = Date.now();
+    
+    const updateProgress = () => {
       const elapsed = Date.now() - startTime;
       const newProgress = Math.min((elapsed / STORY_DURATION) * 100, 100);
       
@@ -103,10 +108,18 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = React.memo(({
         } else {
           onClose();
         }
+      } else {
+        animationFrame = requestAnimationFrame(updateProgress);
       }
-    }, 50); // Smoother updates with 50ms interval
+    };
 
-    return () => clearInterval(interval);
+    animationFrame = requestAnimationFrame(updateProgress);
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
   }, [isOpen, isPaused, isLoading, currentIndex, stories.length, onClose]);
 
   // 🎯 NEW: Keyboard navigation

@@ -21,9 +21,10 @@ export interface Story {
   mediaType: 'image' | 'video';
   userName: string;
   deviceId: string;
+  visitorId: string; // Added for visitor tracking and deletion rights
   createdAt: string;
   expiresAt: string;
-  views: string[]; // Array of user IDs who viewed this story
+  views: string[]; // Array of visitor IDs who viewed this story
   fileName?: string; // For deletion from storage
 }
 
@@ -31,7 +32,8 @@ export interface Story {
 export const addStory = async (
   file: File,
   userName: string,
-  deviceId: string
+  deviceId: string,
+  visitorId: string
 ): Promise<void> => {
   console.log(`🚀 === STORY UPLOAD START ===`);
   console.log(`👤 User: ${userName} (${deviceId})`);
@@ -158,6 +160,7 @@ export const addStory = async (
       mediaType,
       userName,
       deviceId,
+      visitorId, // Added for visitor tracking
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       views: [],

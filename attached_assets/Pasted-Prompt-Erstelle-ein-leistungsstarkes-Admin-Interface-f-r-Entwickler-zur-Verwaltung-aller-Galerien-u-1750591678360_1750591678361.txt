@@ -1,0 +1,91 @@
+Prompt: Erstelle ein leistungsstarkes Admin-Interface für Entwickler zur Verwaltung aller Galerien und Nutzer
+🧩 Ziel:
+Ein zentrales, übersichtliches Admin-Dashboard, das dir als Entwickler/Admin vollständige Kontrolle über alle registrierten Nutzer, ihre Galerien, Profile, individuellen Links und Inhalte gibt.
+
+📦 Funktionale Anforderungen:
+Dashboard-Startseite:
+Zeige eine Liste aller registrierten Benutzer.
+
+Spalten: Profilbild, Profilname, Email, User ID, Galerien, Letzter Login, Link zur Galerie, Thema, Status.
+
+Jeder Eintrag klickbar → öffnet Detailansicht des Benutzers.
+
+Benutzer-Detailansicht:
+Profilbild (größer), Bio, Profilname (editierbar).
+
+Liste aller Galerien dieses Users.
+
+Für jede Galerie:
+
+Galerie-ID / Link
+
+Aktives Theme (Wedding, Vacation, Birthday) – auswählbar per Dropdown.
+
+Erstellungsdatum, Anzahl an Medieninhalten, isPublic Status.
+
+Button zum Öffnen der Galerie im Frontend.
+
+Möglichkeit zur Deaktivierung / Archivierung eines Users oder Galerie.
+
+Möglichkeit zum Zurücksetzen des Profilnamens.
+
+Gallerie-Übersicht (Admin View):
+Zeige alle existierenden Galerien (pagination-fähig).
+
+Filtern nach Theme, User ID, Link, Erstellungsdatum.
+
+Schnellzugriff auf Galerie-Link, Theme-Wechsel, oder Medieninhalt-Explorer.
+
+Media-Explorer (Dateiansicht):
+Zugriff auf alle Medieninhalte einer Galerie (aus Firebase Storage).
+
+Thumbnail-Vorschau.
+
+Download-, Lösch- und Vorschau-Funktion.
+
+Suche & Filter:
+Globale Suche nach: User ID, Profilname, Galerie-Link, Email.
+
+Filter nach: Theme, Erstellungsdatum, Aktivität.
+
+Auth & Sicherheit:
+Nur für Entwickler/Administratoren via spezieller Role (admin: true in Firestore oder Firebase Auth Custom Claims).
+
+Zugriff absichern (z. B. nur bei bestimmten UIDs oder Admin-Token).
+
+🎨 UI/UX-Vorschläge:
+Framework: React + Tailwind + ShadCN oder Material UI.
+
+Layout:
+
+Sidebar-Navigation (Users, Galleries, Storage, Settings).
+
+Responsive Tabelle mit modalen Detail-Popups.
+
+Dark Mode Support.
+
+Icons: Lucide oder Heroicons für Actions (View, Edit, Delete, Open).
+
+Statusindikatoren: Farben für Themes (Blau = Birthday, Grün = Vacation, Rosa = Wedding).
+
+🔧 Technische Umsetzung:
+Backend: Firebase Firestore + Firebase Auth + Firebase Storage.
+
+API Layer: Abstraktion über Firebase SDK (z. B. getAllUsers(), getGalleriesByUserId(), etc.).
+
+Admin-Auth: Nur Zugriff mit admin-Flag oder speziellem uid.
+
+✅ Akzeptanzkriterien:
+Du kannst als Entwickler:
+
+Jeden User inkl. Galerie(n) vollständig einsehen.
+
+Jeden Galerie-Link aufrufen und Thema wechseln.
+
+Medieninhalte ansehen und verwalten.
+
+Änderungen am Profilnamen oder Bio zentral durchführen.
+
+Änderungen werden in Firestore und Firebase Storage korrekt synchronisiert.
+
+Keine Daten eines Users sind für andere User zugänglich – nur für Admin.

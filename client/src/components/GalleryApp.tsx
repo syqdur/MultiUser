@@ -4,6 +4,7 @@ import { UploadSection } from './UploadSection';
 import { InstagramGallery } from './InstagramGallery';
 import { MediaModal } from './MediaModal';
 import { AdminPanel } from './AdminPanel';
+
 import { ProfileHeader } from './ProfileHeader';
 import { UnderConstructionPage } from './UnderConstructionPage';
 import { StoriesBar } from './StoriesBar';
@@ -50,6 +51,7 @@ import {
   cleanupExpiredStories,
   Story
 } from '../services/liveService';
+import { getVisitorId } from '../utils/deviceId';
 import { 
   createUserProfile, 
   getUserProfile, 
@@ -82,6 +84,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
   const [showStoriesViewer, setShowStoriesViewer] = useState(false);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [showStoryUpload, setShowStoryUpload] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'gallery' | 'music' | 'timeline'>('gallery');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPasswordSetup, setShowAdminPasswordSetup] = useState(false);
@@ -365,7 +368,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     setIsUploading(true);
 
     try {
-      await addStory(file, user.displayName || user.email || 'Anonymous', user.uid);
+      const visitorId = getVisitorId();
+      await addStory(file, user.displayName || user.email || 'Anonymous', user.uid, visitorId);
       setStatus('✅ Story erfolgreich hochgeladen!');
       setTimeout(() => setStatus(''), 3000);
       setShowStoryUpload(false);
@@ -492,12 +496,10 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     localStorage.setItem('admin_status', 'true');
     setShowAdminLogin(false);
     
-    // Show welcome message for different admins
-    if (username === "Ehepaar") {
-      setTimeout(() => {
-        alert('🎉 Willkommen! Du hast jetzt Zugriff auf die Post-Hochzeits-Zusammenfassung.\n\n💕 Klicke auf den Sparkles-Button (✨) um loszulegen!');
-      }, 500);
-    }
+    // Directly open the admin dashboard after login
+    setTimeout(() => {
+      setShowAdminDashboard(true);
+    }, 300);
   };
 
   const handleAdminLogout = () => {
@@ -528,6 +530,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
     try {
       await logout();
       handleAdminLogout(); // Also clear admin status
+      // Force page reload to show landing page
+      window.location.reload();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -650,6 +654,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
             </div>
             
             <div className="flex items-center space-x-2">
+
+              
               <button
                 onClick={toggleDarkMode}
                 className={`p-2 rounded-full transition-colors ${
@@ -661,12 +667,13 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
               
               <button
                 onClick={handleLogout}
-                className={`p-2 rounded-full transition-colors ${
+                className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                   isDarkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
                 }`}
-                title="Logout"
+                title="Logout to Landing Page"
               >
-                <LogOut size={20} />
+                <LogOut size={16} />
+                <span className="text-sm">Logout</span>
               </button>
             </div>
           </div>
@@ -735,7 +742,7 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
               items={mediaItems}
               onItemClick={openModal}
               onDelete={isAdmin ? (item: MediaItem) => handleDelete(item as UserMediaItem) : undefined}
-              onEditNote={isAdmin ? (item: MediaItem, newText: string) => handleEditNote(item as UserMediaItem, newText) : undefined}
+              onEditNote={(item: MediaItem, newText: string) => handleEditNote(item as UserMediaItem, newText)}
               isAdmin={isAdmin}
               comments={comments}
               likes={likes}
@@ -792,8 +799,11 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
           onToggleAdmin={handleAdminLogout}
           mediaItems={mediaItems}
           siteStatus={siteStatus || undefined}
+          onOpenDashboard={() => {}}
         />
       )}
+
+
 
       {/* Modals */}
       <MediaModal

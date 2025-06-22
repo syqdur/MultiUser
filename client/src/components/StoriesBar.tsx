@@ -47,7 +47,7 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({
     userName,
     stories: userStoriesArray,
     latestStory: userStoriesArray[userStoriesArray.length - 1],
-    // 🎯 NEW: Check if user has viewed ALL stories from this user
+    // Enhanced visitor-based view tracking
     hasUnviewed: userStoriesArray.some(story => !story.views.includes(currentUser)),
     unviewedCount: userStoriesArray.filter(story => !story.views.includes(currentUser)).length
   }));

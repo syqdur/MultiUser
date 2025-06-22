@@ -14,6 +14,7 @@ interface AdminPanelProps {
   onToggleAdmin: (isAdmin: boolean) => void;
   mediaItems?: MediaItem[];
   siteStatus?: SiteStatus;
+  onOpenDashboard: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
