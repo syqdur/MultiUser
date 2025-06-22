@@ -17,8 +17,8 @@ export interface SpotifyUserProfile {
   country: string;
 }
 
-const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '4dbf85a8ca7c43d3b2ddc540194e9387';
-const SPOTIFY_CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET || 'acf102b8834d48b497a7e98bf69021f6';
+const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '00f80ab84d074aafacc982e93f47942c';
+const SPOTIFY_CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET || 'e403ceac0ab847b58a1386c4e815a033';
 
 const getRedirectUri = (): string => {
   if (import.meta.env.VITE_SPOTIFY_REDIRECT_URI) {
