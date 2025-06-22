@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Pause, Play, Trash2, Eye } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Pause, Play, Trash2, Eye, Share2 } from 'lucide-react';
 import { Story } from '../services/liveService';
+import { StoryShareModal } from './StoryShareModal';
 
 interface StoriesViewerProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const currentStory = stories[currentIndex];
   const STORY_DURATION = 5000; // 5 seconds per story
@@ -228,6 +230,13 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="p-2 rounded-full bg-blue-600/80 text-white hover:bg-blue-600 transition-colors"
+            title="Story teilen"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
           {canDeleteStory && (
             <button
               onClick={handleDeleteStory}
@@ -329,6 +338,14 @@ export const StoriesViewer: React.FC<StoriesViewerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Story Share Modal */}
+      <StoryShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        story={currentStory}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };

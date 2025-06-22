@@ -263,7 +263,16 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
 
   const handleDelete = async (item: UserMediaItem) => {
     try {
-      await deleteUserMediaItem(item, user?.uid || '');
+      // Check if user owns the item or is admin
+      const canDelete = isAdmin || item.galleryId === user?.uid;
+      
+      if (!canDelete) {
+        setStatus('❌ Du kannst nur deine eigenen Inhalte löschen.');
+        setTimeout(() => setStatus(''), 3000);
+        return;
+      }
+      
+      await deleteUserMediaItem(item, user?.uid || '', isAdmin);
       setStatus('✅ Element erfolgreich gelöscht!');
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
@@ -523,7 +532,8 @@ export const GalleryApp: React.FC<GalleryAppProps> = ({ isDarkMode, toggleDarkMo
       <div className="max-w-md mx-auto px-4 py-4">
         <StoriesBar
           stories={stories}
-          currentUser={user?.displayName || user?.email || 'Anonymous'}
+          currentUser={user?.uid || ''}
+          currentUserName={user?.displayName || user?.email || 'Anonymous'}
           onAddStory={() => setShowStoryUpload(true)}
           onViewStory={handleViewStory}
           isDarkMode={isDarkMode}

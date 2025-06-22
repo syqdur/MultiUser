@@ -1,3 +1,14 @@
+# Story Viewing Fix - Manual Firebase Rules Update
+
+## Issue
+Stories upload successfully but can't be marked as "viewed" due to Firebase permission restrictions.
+
+## Quick Fix (2 minutes)
+
+1. Open: https://console.firebase.google.com/project/dev1-b3973/firestore/rules
+2. Replace the existing rules with this updated version:
+
+```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -88,3 +99,14 @@ service cloud.firestore {
     }
   }
 }
+```
+
+3. Click "Publish"
+
+## What This Fixes
+- Allows users to mark any story as viewed by updating the views array
+- Removes the red numbers on stories after viewing
+- Maintains security by only allowing views array updates
+
+## Result
+After updating, stories will properly show as viewed and the red notification badges will disappear when stories are watched.

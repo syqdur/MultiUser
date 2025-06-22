@@ -1,5 +1,5 @@
-const https = require('https');
-const fs = require('fs');
+import https from 'https';
+import fs from 'fs';
 
 // Read service account
 const serviceAccount = JSON.parse(fs.readFileSync('firebase-service-account.json', 'utf8'));

@@ -4,7 +4,8 @@ import { Story } from '../services/liveService';
 
 interface StoriesBarProps {
   stories: Story[];
-  currentUser: string;
+  currentUser: string; // User ID for view tracking
+  currentUserName?: string; // Display name for UI
   onAddStory: () => void;
   onViewStory: (storyIndex: number) => void;
   isDarkMode: boolean;
@@ -13,6 +14,7 @@ interface StoriesBarProps {
 export const StoriesBar: React.FC<StoriesBarProps> = ({
   stories,
   currentUser,
+  currentUserName,
   onAddStory,
   onViewStory,
   isDarkMode
@@ -46,7 +48,8 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({
     stories: userStoriesArray,
     latestStory: userStoriesArray[userStoriesArray.length - 1],
     // 🎯 NEW: Check if user has viewed ALL stories from this user
-    hasUnviewed: userStoriesArray.some(story => !story.views.includes(currentUser))
+    hasUnviewed: userStoriesArray.some(story => !story.views.includes(currentUser)),
+    unviewedCount: userStoriesArray.filter(story => !story.views.includes(currentUser)).length
   }));
 
   // Sort: current user first, then by latest story time
@@ -153,12 +156,12 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({
                 </div>
               </div>
               
-              {/* Story count indicator */}
-              {userStory.stories.length > 1 && (
+              {/* Unviewed stories count indicator */}
+              {userStory.unviewedCount > 0 && (
                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors duration-300 ${
-                  isDarkMode ? 'bg-gray-700 text-white border-2 border-gray-800' : 'bg-white text-gray-900 border-2 border-white shadow-sm'
+                  'bg-red-500 text-white border-2 border-white shadow-lg'
                 }`}>
-                  {userStory.stories.length}
+                  {userStory.unviewedCount}
                 </div>
               )}
 

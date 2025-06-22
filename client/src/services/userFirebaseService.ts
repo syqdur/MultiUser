@@ -142,22 +142,27 @@ export const editUserNote = async (
 // Delete user media item
 export const deleteUserMediaItem = async (
   item: UserMediaItem,
-  userId: string
+  userId: string,
+  isAdmin: boolean = false
 ): Promise<void> => {
-  // Verify the item belongs to this user
-  if (item.galleryId !== userId) {
+  // Allow admin to delete any item, or user to delete their own items
+  if (!isAdmin && item.galleryId !== userId) {
     throw new Error('Unauthorized: Cannot delete item from another user\'s gallery');
   }
 
   try {
+    console.log(`🗑️ Deleting media item ${item.id} (Admin: ${isAdmin})`);
+    
     // Delete from storage if not a note
     if (item.type !== 'note' && item.name) {
-      const storageRef = ref(storage, `users/${userId}/media/${item.name}`);
+      const storageRef = ref(storage, `users/${item.galleryId}/media/${item.name}`);
       await deleteObject(storageRef);
+      console.log(`✅ Deleted from storage: ${item.name}`);
     }
     
     // Delete from Firestore
     await deleteDoc(doc(db, 'user_media', item.id));
+    console.log(`✅ Deleted from Firestore: ${item.id}`);
   } catch (error) {
     console.error(`Error deleting user media item ${item.id}:`, error);
     throw error;

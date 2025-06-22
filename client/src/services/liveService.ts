@@ -8,10 +8,11 @@ import {
   addDoc,
   deleteDoc,
   getDocs,
+  getDoc,
   updateDoc
 } from 'firebase/firestore';
 import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db, storage, auth } from '../config/firebase';
 
 // Stories Types
 export interface Story {
@@ -36,6 +37,13 @@ export const addStory = async (
   console.log(`👤 User: ${userName} (${deviceId})`);
   console.log(`📁 File: ${file.name}`);
   console.log(`📊 Size: ${file.size} bytes (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+  
+  // Get current user ID first
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Nicht angemeldet. Lade die Seite neu und versuche es erneut.');
+  }
+  const userId = currentUser.uid;
   
   const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
   console.log(`🎬 Type: ${mediaType} (${file.type})`);
@@ -266,34 +274,21 @@ export const subscribeStories = (userId: string, callback: (stories: Story[]) =>
   });
 };
 
-// Subscribe to ALL stories for admin (including expired ones)
+// For admin: Subscribe to current user's stories (same as regular users for now)
+// TODO: Later could aggregate stories from all users if needed
 export const subscribeAllStories = (callback: (stories: Story[]) => void): (() => void) => {
   console.log(`👑 === SUBSCRIBING TO ALL STORIES (ADMIN) ===`);
   
-  const q = query(
-    collection(db, 'stories'),
-    orderBy('createdAt', 'desc')
-  );
+  // Get current user's stories (admin sees their own stories)
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    console.log(`❌ No current user found for admin stories`);
+    callback([]);
+    return () => {};
+  }
   
-  return onSnapshot(q, (snapshot) => {
-    const stories: Story[] = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Story));
-    
-    console.log(`👑 All stories loaded (admin): ${stories.length}`);
-    
-    // Debug: Log each story with expiry status
-    const now = new Date();
-    stories.forEach((story, index) => {
-      const isExpired = new Date(story.expiresAt) < now;
-      const timeLeft = new Date(story.expiresAt).getTime() - Date.now();
-      const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      console.log(`  ${index + 1}. ${story.userName} - ${story.mediaType} - ${isExpired ? 'EXPIRED' : `${hoursLeft}h left`}`);
-    });
-    
-    callback(stories);
-  }, (error) => {
+  // Use same subscription as regular users for now
+  return subscribeStories(currentUser.uid, callback, (error) => {
     console.error('❌ Error listening to all stories:', error);
     callback([]);
   });
@@ -301,18 +296,34 @@ export const subscribeAllStories = (callback: (stories: Story[]) => void): (() =
 
 export const markStoryAsViewed = async (storyId: string, deviceId: string): Promise<void> => {
   try {
-    const storyRef = doc(db, 'stories', storyId);
-    const storyDoc = await getDocs(query(collection(db, 'stories'), where('__name__', '==', storyId)));
+    console.log(`👁️ Marking story ${storyId} as viewed by ${deviceId}`);
     
-    if (!storyDoc.empty) {
-      const storyData = storyDoc.docs[0].data();
+    // Get current user to find the correct collection path
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.log('❌ No current user found');
+      return;
+    }
+    
+    // Use user-specific collection path
+    const storyRef = doc(db, `users/${currentUser.uid}/stories`, storyId);
+    const storySnap = await getDoc(storyRef);
+    
+    if (storySnap.exists()) {
+      const storyData = storySnap.data();
       const currentViews = storyData.views || [];
       
       if (!currentViews.includes(deviceId)) {
+        console.log(`✅ Adding view for ${deviceId}`);
         await updateDoc(storyRef, {
           views: [...currentViews, deviceId]
         });
+        console.log(`✅ Story marked as viewed successfully`);
+      } else {
+        console.log(`ℹ️ Story already viewed by ${deviceId}`);
       }
+    } else {
+      console.log(`❌ Story ${storyId} not found in user collection`);
     }
   } catch (error) {
     console.error('Error marking story as viewed:', error);

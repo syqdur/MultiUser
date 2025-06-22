@@ -70,9 +70,8 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
     title: string;
   } | null>(null);
 
-  // Load timeline events with comprehensive error handling
+  // Load timeline events with proper error handling
   useEffect(() => {
-    // Don't start loading if no userId
     if (!userId) {
       setIsLoading(false);
       setEvents([]);
@@ -82,59 +81,77 @@ export const Timeline: React.FC<TimelineProps> = ({ isDarkMode, userName, isAdmi
     console.log('🔄 Loading timeline events for user:', userId);
     
     let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
     
-    const loadEvents = async () => {
+    const setupTimeline = () => {
       try {
+        if (!isMounted) return;
+        
         setIsLoading(true);
         setError(null);
         
-        console.log('🔗 Setting up timeline listener...');
-        
-        // Create query with user-specific collection path
-        const q = query(collection(db, `users/${userId}/timeline`), orderBy('date', 'asc'));
+        const timelineRef = collection(db, `users/${userId}/timeline`);
+        const q = query(timelineRef, orderBy('createdAt', 'desc'));
         
         unsubscribe = onSnapshot(q, 
           (snapshot) => {
+            if (!isMounted) return;
+            
             console.log(`📋 Timeline events loaded: ${snapshot.docs.length}`);
             
-            const timelineEvents: TimelineEvent[] = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            } as TimelineEvent));
+            const timelineEvents: TimelineEvent[] = [];
+            snapshot.forEach((doc) => {
+              timelineEvents.push({
+                id: doc.id,
+                ...doc.data()
+              } as TimelineEvent);
+            });
             
             setEvents(timelineEvents);
             setIsLoading(false);
             setError(null);
           },
           (error) => {
-            console.error('❌ Timeline listener error:', error);
-            setError(`Fehler beim Laden der Timeline: ${error.message}`);
-            setIsLoading(false);
+            if (!isMounted) return;
             
-            // Fallback: Set empty events to prevent blank page
+            console.error('❌ Timeline listener error:', error);
+            
+            if (error.code === 'permission-denied') {
+              setError('Timeline access not available');
+            } else {
+              setError('Timeline could not be loaded');
+            }
+            
+            setIsLoading(false);
             setEvents([]);
           }
         );
         
       } catch (error: any) {
-        console.error('❌ Timeline setup error:', error);
-        setError(`Timeline konnte nicht geladen werden: ${error.message}`);
-        setIsLoading(false);
+        if (!isMounted) return;
         
-        // Fallback: Set empty events to prevent blank page
+        console.error('❌ Timeline setup error:', error);
+        setError('Timeline initialization failed');
+        setIsLoading(false);
         setEvents([]);
       }
     };
     
-    loadEvents();
+    const timeoutId = setTimeout(setupTimeline, 100);
     
     return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      
       if (unsubscribe) {
-        console.log('🧹 Cleaning up timeline listener');
-        unsubscribe();
+        try {
+          unsubscribe();
+        } catch (error) {
+          // Silently handle cleanup errors
+        }
       }
     };
-  }, []);
+  }, [userId]);
 
   const resetForm = () => {
     setFormData({
